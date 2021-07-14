@@ -30,7 +30,7 @@ public class Unit : Equatable, Hashable {
     }
     public fileprivate(set) var conversionFactor: Double
     
-    internal var baseUnitsPerDimension = [Dimension: [Unit: Int]]()
+    internal var baseUnitsPerDimension = [Dimension: [Unit: Double]]()
     
     public convenience init(symbol: String) {
         let dimensions = Dimensions()
@@ -81,10 +81,10 @@ public class Unit : Equatable, Hashable {
             var unitsInDimLHS = lhs.baseUnitsPerDimension[dim]
             var unitsInDimRHS = rhs.baseUnitsPerDimension[dim]
             if unitsInDimLHS == nil {
-                unitsInDimLHS = [Unit: Int]()
+                unitsInDimLHS = [Unit: Double]()
             }
             if unitsInDimRHS == nil {
-                unitsInDimRHS = [Unit: Int]()
+                unitsInDimRHS = [Unit: Double]()
             }
             for (unit, exponent) in unitsInDimLHS! {
                 let exp2 = unitsInDimRHS![unit]
@@ -223,11 +223,11 @@ public class UnitMultiplication : Unit {
     }
     
     internal func combineBaseUnitsPerDimension() {
-        var bupds = [Dimension: [Unit: Int]] ()
+        var bupds = [Dimension: [Unit: Double]] ()
         for dim in Dimension.allCases {
             let unitExps1 = multiplier.baseUnitsPerDimension[dim]
             let unitExps2 = multiplicand.baseUnitsPerDimension[dim]
-            var unitExps = [Unit: Int]()
+            var unitExps = [Unit: Double]()
             if unitExps1 != nil {
                 for (unit, exponent) in unitExps1! {
                     let existingExponent = unitExps[unit] ?? 0
@@ -268,11 +268,11 @@ public class UnitDivision : Unit {
     }
     
     internal func combineBaseUnitsPerDimension() {
-        var bupds = [Dimension: [Unit: Int]] ()
+        var bupds = [Dimension: [Unit: Double]] ()
         for dim in Dimension.allCases {
             let unitExps1 = numerator.baseUnitsPerDimension[dim]
             let unitExps2 = denominator.baseUnitsPerDimension[dim]
-            var unitExps = [Unit: Int]()
+            var unitExps = [Unit: Double]()
             if unitExps1 != nil {
                 for (unit, exponent) in unitExps1! {
                     let existingExponent = unitExps[unit] ?? 0
@@ -294,12 +294,12 @@ public class UnitDivision : Unit {
 public class UnitExponentiation : Unit {
     
     public let base : Unit
-    public let exponent : Int
+    public let exponent : Double
     
-    public init(base: Unit, exponent: Int) {
+    public init(base: Unit, exponent: Double) {
         self.base = base
         self.exponent = exponent
-        let dimensions = base.dimensions ^ exponent
+        let dimensions = pow(base.dimensions, exponent)
         let symbol = "\(base.symbol)^\(exponent)"
         super.init(symbol: symbol, dimensions: dimensions, identifier: "\(base.identifier)^\(exponent)")
         if base.isBaseUnit {
@@ -313,10 +313,10 @@ public class UnitExponentiation : Unit {
     }
     
     internal func combineBaseUnitsPerDimension() {
-        var bupds = [Dimension: [Unit: Int]] ()
+        var bupds = [Dimension: [Unit: Double]] ()
         for dim in Dimension.allCases {
             let unitExps1 = base.baseUnitsPerDimension[dim]
-            var unitExps = [Unit: Int]()
+            var unitExps = [Unit: Double]()
             if unitExps1 != nil {
                 for (unit, exponent) in unitExps1! {
                     unitExps[unit] = exponent * self.exponent
@@ -368,7 +368,7 @@ public class CompoundUnit : Unit {
             throw UnitValidationError.noPartialUnitsDefined
         }
         let primaryUnit : Unit = partialUnits[0]
-        let testMeasure = Measure(1.0, unit: primaryUnit)
+        let testMeasure = try! Measure(1.0, unit: primaryUnit)
         for (index, partialUnit) in partialUnits.enumerated() {
             if index > 0 {
                 if partialUnit.dimensions != primaryUnit.dimensions {
@@ -407,7 +407,7 @@ public func /(lhs: Unit, rhs: Unit) -> Unit {
     return UnitDivision(numerator: lhs, denominator: rhs)
 }
 
-public func ^(lhs: Unit, rhs: Int) -> Unit {
-    return UnitExponentiation(base: lhs, exponent: rhs)
+public func pow(base: Unit, exponent: Double) -> Unit {
+    return UnitExponentiation(base: base, exponent: exponent)
 }
 

@@ -86,6 +86,6 @@ public extension Scale {
         
     // MARK: Scales
     static let kelvinScale = RatioScale(with: .kelvin)
-    static let celciusScale = IntervalScale(reltativeTo: kelvinScale, offset: Measure(-273.15, unit: .degreeCelsius))
+    static let celciusScale = IntervalScale(reltativeTo: kelvinScale, offset: try! Measure(-273.15, unit: .degreeCelsius))
     
 }

@@ -78,7 +78,7 @@ public extension Unit {
     static let angleHourMinuteSecond = try! CompoundUnit(consistingOf: [angleHour, angleMinute, angleSecond])
 }
 
-/// An angle is a designation for the measure of a rotation.
+/// An angle is a measure of the angle of a rotation, the figure formed by two rays.
 ///
 /// Angles are dimensionless quantities and are often specified in radians or degrees.
 public class Angle: Quantity {
@@ -93,29 +93,48 @@ public class Angle: Quantity {
     ///   - value: The value for the angle.
     /// - Throws: A ``UnitValidationError`` when the dimensions of the value do not
     /// correspond to the dimensions of the quantity.
-    public override init(symbol: String? = nil, _ value: Measure) throws {
-        if value.unit.dimensions != Unit.radian.dimensions {
+    public override init(symbol: String? = nil, _ scalarValue: Double, unit: Unit) throws {
+        if unit.dimensions != Unit.radian.dimensions {
             throw UnitValidationError.differentDimensionality
         }
-        try super.init(symbol: symbol, value)
+        try super.init(symbol: symbol, scalarValue, unit: unit)
     }
 }
 
+
+/// Represents a latitude, which is the angle perpedicular to the principal plane of a spherical coordinate system
+/// measured from the defined principal plane.
+///
+/// Points on a spherical coordinate system are defined by their longitude and latitude, such as the
+/// geographical longitude and latitude in the graphical coordinate system that defines points on the Earth.
+/// The principal plane of the geographical coordinate system is the equator and the origin is defined as the
+/// intersection between the prime meridian (of Greenwhich) and the equator.
+///
+/// A latitude is always given between -90° (the North pole) and +90° (the South pole).
 public class Latitude: Angle, Ranged {
     
+    /// The range (minimum and maximum value) of values allowed for the latitude.
     public let range : (min: Measure, max: Measure)
     
-    public override init(symbol: String? = nil, _ value: Measure) throws {
-        if value.unit.dimensions != Unit.radian.dimensions {
+    /// Creates a new latitude with the specified value.
+    ///
+    /// This initialiser checks whether the dimensions of the (unit of the) value corresponds to the
+    /// dimensions expected for an angle. An angle is, as a matter of fact, a dimensionless quantity.
+    /// Units like `.radians` or `.degrees` are used for angles.
+    /// - Parameters:
+    ///   - symbol: The symbol used for the latitude quantity.
+    ///   - value: The value for the latitude.
+    /// - Throws: A ``UnitValidationError`` when the dimensions of the value do not
+    /// correspond to the dimensions of the quantity.
+    public override init(symbol: String? = nil, _ scalarValue: Double, unit: Unit) throws {
+        if unit.dimensions != Unit.radian.dimensions {
             throw UnitValidationError.differentDimensionality
         }
-        let range = (min: Measure(-90, unit:.degree), max: Measure(90, unit:.degree))
-        if value < range.min || value > range.max {
+        self.range = (min: try! Measure(-90, unit:.degree), max: try! Measure(90, unit:.degree))
+        try super.init(symbol: symbol, scalarValue, unit: unit)
+        if self < self.range.min || self > self.range.max {
             throw QuantityValidationError.outOfRange
         }
-        let converted = try value.convert(to: range.max.unit)
-        self.range = range
-        try super.init(symbol: symbol, converted)
     }
 }
 
@@ -123,23 +142,35 @@ public class NormalisedAngle: Angle, Ranged {
     
     public let range : (min: Measure, max: Measure)
     
-    public override init(symbol: String? = nil, _ value: Measure) throws {
-        if value.unit.dimensions != Unit.radian.dimensions {
+    public init(symbol: String? = nil, _ scalarValue: Double,
+                         unit: Unit,
+                         range: (min: Measure, max: Measure)=(min: try! Measure(0, unit:.degree), max: try! Measure(360, unit:.degree))) throws {
+        if unit.dimensions != Unit.radian.dimensions {
             throw UnitValidationError.differentDimensionality
         }
-        let range = (min: Measure(0, unit:.degree), max: Measure(360, unit:.degree))
-        var converted = try value.convert(to: range.max.unit)
-        if value < range.min || value > range.max {
-            var newValue = converted.scalarValue.truncatingRemainder(dividingBy: 360.0)
-            if newValue < 0 {
-                newValue = newValue + 360.0
+        let setrange = (min: try range.min.convert(to: .degree), max: try range.max.convert(to: .degree))
+        let tempMeasure = try Measure(scalarValue, unit: unit).convert(to: .degree)
+        var convertedScalarValue = tempMeasure.scalarValue
+        if tempMeasure < setrange.min || tempMeasure > setrange.max {
+            convertedScalarValue = tempMeasure.scalarValue.truncatingRemainder(dividingBy: 360.0)
+            if convertedScalarValue < 0 {
+                convertedScalarValue = convertedScalarValue + 360.0
             }
-            converted = Measure(newValue, unit: range.max.unit)
         }
-        self.range = range
-        try super.init(symbol: symbol, converted)
+        self.range = setrange
+        let tempMeasure2 = try Measure(convertedScalarValue, unit: .degree).convert(to: unit)
+        try super.init(symbol: symbol, tempMeasure2.scalarValue, unit: unit)
     }
 }
 
+/// Represents a longitude, which is the angle along the principal plane of a spherical coordinate system
+/// measured from the defined origin.
+///
+/// Points on a spherical coordinate system are defined by their longitude and latitude, such as the
+/// geographical longitude and latitude in the graphical coordinate system that defines points on the Earth.
+/// The principal plane of the geographical coordinate system is the equator and the origin is defined as the
+/// intersection between the prime meridian (of Greenwhich) and the equator.
+///
+/// A longitude is always given between 0° and 360° or between -180° (East) and 180° (West).
 public class Longitude: NormalisedAngle {
 }

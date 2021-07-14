@@ -17,7 +17,7 @@ import Foundation
 /// result is expressed is adapted to the units of the arguments in the arithmetic expression. When dividing
 /// measures, of different units, say `5 m` by `2 s`, the resulting value will be expressed in the
 /// `UnitDivision` of the two units, i.e. `2.5 m/s`.
-public struct Measure : CustomStringConvertible {
+public class Measure : CustomStringConvertible {
     
     /// The scalar value of the measure as expressed in the specified unit or along the specified scale.
     public let scalarValue: Double
@@ -55,7 +55,7 @@ public struct Measure : CustomStringConvertible {
     /// - Parameters:
     ///     - scalarValue: The scalar value of the `Measure`
     ///     - unit: The unit in which the scalar value is expressed.
-    public init(_ scalarValue: Double, unit: Unit) {
+    public init(_ scalarValue: Double, unit: Unit) throws {
         self.scalarValue = scalarValue
         self.unit = unit
         self.scale = nil
@@ -67,7 +67,7 @@ public struct Measure : CustomStringConvertible {
     /// - Parameters:
     ///     - scalarValue: The scalar value of the `Measure`
     ///     - scale: The scale in which the scalar value is placed.
-    public init(_ scalarValue: Double, scale: MeasurementScale) {
+    public init(_ scalarValue: Double, scale: MeasurementScale) throws {
         self.scalarValue = scalarValue
         self.unit = scale.unit
         self.scale = scale
@@ -111,7 +111,7 @@ public struct Measure : CustomStringConvertible {
             throw ScaleValidationError.cannotConvertScaleToUnit
         }
         let conversionFactor = self.unit.conversionFactor / unit.conversionFactor
-        return Measure(self.scalarValue*conversionFactor, unit: unit)
+        return try Measure(self.scalarValue*conversionFactor, unit: unit)
     }
     
     
@@ -177,11 +177,11 @@ public struct Measure : CustomStringConvertible {
         }
         if scale == argumentRatioScale { // Convert to ratio scale
             let intervalScale = self.scale as! IntervalScale
-            return Measure((self.scalarValue-intervalScale.offset.scalarValue)*self.unit.conversionFactor, scale: selfRatioScale)
+            return try Measure((self.scalarValue-intervalScale.offset.scalarValue)*self.unit.conversionFactor, scale: selfRatioScale)
         }
         // Convert from ratio scale
         let intervalScale = scale as! IntervalScale
-        return Measure(self.scalarValue/intervalScale.unit.conversionFactor+intervalScale.offset.scalarValue, scale: intervalScale)
+        return try Measure(self.scalarValue/intervalScale.unit.conversionFactor+intervalScale.offset.scalarValue, scale: intervalScale)
     }
     
     private func ratioScale(for scale: Scale) throws -> RatioScale {
@@ -246,7 +246,7 @@ public struct Measure : CustomStringConvertible {
         var sign : Int16 = 1
         if position == 0 {
             let smallestUnit = compoundUnits.last!
-            var roundingFactorMeasure = Measure(0.5, unit: smallestUnit)
+            var roundingFactorMeasure = try! Measure(0.5, unit: smallestUnit)
             roundingFactorMeasure = try! roundingFactorMeasure.convert(to: value.unit)
             roundingFactor = roundingFactorMeasure.scalarValue
             var scalarValue = value.scalarValue
@@ -254,18 +254,18 @@ public struct Measure : CustomStringConvertible {
                 sign = -1
                 scalarValue = -scalarValue
             }
-            measure = Measure(scalarValue+roundingFactor, unit: value.unit)
+            measure = try! Measure(scalarValue+roundingFactor, unit: value.unit)
         }
         if compoundUnits.count > position {
             let converted = try! measure.convert(to: compoundUnits[position])
             // get number of digits
             var ndigits = 0
             if position > 0 {
-                let testm = Measure(1.0, unit:compoundUnits[position-1])
+                let testm = try! Measure(1.0, unit:compoundUnits[position-1])
                 let maxm = try! testm.convert(to: compoundUnits[position])
                 ndigits = Int(log10(maxm.scalarValue))+1
             }
-            let rounded = Measure(Double(Int(converted.scalarValue)), unit: converted.unit)
+            let rounded = try! Measure(Double(Int(converted.scalarValue)), unit: converted.unit)
             var digits = ndigits - 1
             if rounded.scalarValue > 0.0 {
                 digits = ndigits - Int(log10(rounded.scalarValue))-1
@@ -316,201 +316,6 @@ extension Measure: Equatable {
             return false
         }
     }
-}
-
-// MARK: Arithmetic with Measures
-
-/// Creates a new `Measure` instance with a value equal to the addition of the left and right hand
-/// expression. The new measure is expressed in the same units as the left hand expression.
-///
-/// In the case of measures that are epressed on a measurement scale:
-/// * If both measures are expressed as scales, addition is not allowed and a `ScaleValidationError.cannotUseScaleInArithmetic` is thrown.
-/// * A point on a scale can also not be added to a non-scale measure and a `ScaleValidationError.cannotUseScaleInArithmetic` is thrown.
-/// * Addition is, however, valid when a non-scale measure is added to a point on a scale. For instance one can add `5 K`to `10°C` and will result in a value of `15°C`, as  `1 K` is equal to `1°C` as a relative value.
-///
-///  - Parameters:
-///     - lhs: The left hand side measure for the operator.
-///     - rhs: The right hand side measure for the operator.
-///  - Returns: The result of the addition of the two measures. This result is another measure expressing
-///  either a value with a unit, or a point on a measurement scale.
-public func +(lhs: Measure, rhs: Measure) throws -> Measure {
-    if rhs.usesScale {
-        throw ScaleValidationError.cannotUseScaleInArithmetic
-    }
-    if lhs.usesScale && !lhs.usesMeasurementScale {
-        throw ScaleValidationError.cannotUseArithmeticOnNonMeasurementScale
-    }
-    let converted = try rhs.convert(to: lhs.unit)
-    if lhs.usesMeasurementScale {
-        return Measure(lhs.scalarValue + converted.scalarValue, scale: (lhs.scale as! MeasurementScale))
-    }
-    return Measure(lhs.scalarValue + converted.scalarValue, unit: lhs.unit)
-}
-
-/// Creates a new `Measure` instance with a value equal to the subtraction of the right from the left hand
-/// expression. The new measure is expressed in the same units as the left hand expression.
-///
-/// In the case of measures that are epressed on a measurement scale:
-/// * If both measures are expressed as scales, subtraction is not allowed and a
-/// `ScaleValidationError.cannotUseScaleInArithmetic` is thrown.
-/// * A point on a scale can also not be subtracted to a non-scale measure and a
-/// `ScaleValidationError.cannotUseScaleInArithmetic` is thrown.
-/// * Subtraction is, however, valid when a non-scale measure is subtracted from a point on a scale.
-/// For instance one can subtract `5 K`from `10°C` and will result in a value of `5°C`, as  `1 K` is equal to `1°C` as a relative value.
-///
-///  - Parameters:
-///     - lhs: The left hand side measure for the operator.
-///     - rhs: The right hand side measure for the operator.
-///  - Returns: The result of the addition of the two measures. This result is another measure expressing
-///  either a value with a unit, or a point on a measurement scale.
-public func -(lhs: Measure, rhs: Measure) throws -> Measure {
-    if rhs.usesScale {
-        throw ScaleValidationError.cannotUseScaleInArithmetic
-    }
-    if lhs.usesScale && !lhs.usesMeasurementScale {
-        throw ScaleValidationError.cannotUseArithmeticOnNonMeasurementScale
-    }
-    let converted = try rhs.convert(to: lhs.unit)
-    if lhs.usesMeasurementScale {
-        return Measure(lhs.scalarValue - converted.scalarValue, scale: (lhs.scale as! MeasurementScale))
-    }
-    return Measure(lhs.scalarValue - converted.scalarValue, unit: lhs.unit)
-}
-
-/// Multiplies the left hand measure with the right hand measure and creates a new `Measure` with the
-/// result of the multiplication. The unit of the result is a `UnitMultiplication` of the units of the
-/// left and right hand expressions.
-///
-/// Points on a scale are used as non-scale measures where the value and unit are used in the multiplication
-/// but the offset of the scale is disregarded.
-///
-///  - Parameters:
-///     - lhs: The left hand side measure for the operator.
-///     - rhs: The right hand side measure for the operator.
-///  - Returns: The result of the multiplicatipm of the two measures.
-public func *(lhs: Measure, rhs: Measure) -> Measure {
-    let unit = UnitMultiplication(multiplier: lhs.unit, multiplicand: rhs.unit)
-    return Measure(lhs.scalarValue * rhs.scalarValue, unit: unit)
-}
-
-
-/// Multiplies the left hand value with the right hand measure and creates a new `Measure` with the
-/// result of the multiplication. The unit of the result is the same as the unit in the right hand side measure.
-///
-/// The unit of the `Double` value on the left hand side is  taken to be `.one`, i.e. to be dimensionless.
-///
-/// Points on a scale are used as non-scale measures where the value and unit are used in the multiplication
-/// but the offset of the scale is disregarded.
-///
-///  - Parameters:
-///     - lhs: The left hand side value for the operator.
-///     - rhs: The right hand side measure for the operator.
-///  - Returns: The result of the multiplicatipm of the value with the measure.
-public func *(lhs: Double, rhs: Measure) -> Measure {
-    return Measure(lhs * rhs.scalarValue, unit: rhs.unit)
-}
-
-
-/// Multiplies the left hand measure with the right hand value and creates a new `Measure` with the
-/// result of the multiplication.
-///
-/// The unit of the result is the same as the unit in the left hand side measure, because
-/// the unit of the `Double` value on the rigjt hand side is  taken to be `.one`, i.e. to be dimensionless.
-///
-/// Points on a scale are used as non-scale measures where the value and unit are used in the multiplication
-/// but the offset of the scale is disregarded.
-///
-///  - Parameters:
-///     - lhs: The left hand side measure for the operator.
-///     - rhs: The right hand side value for the operator.
-///  - Returns: The result of the multiplicatipm of the value with the measure.
-public func *(lhs: Measure, rhs: Double) -> Measure {
-    return Measure(rhs * lhs.scalarValue, unit: lhs.unit)
-}
-
-/// Divides the left hand measure by the right hand measure and creates a new `Measure` with the
-/// result of the division.
-///
-/// The unit of the result is a `UnitDivision` of the units of the left and right hand expressions.
-///
-/// Points on a scale are used as non-scale measures where the value and unit are used in the division
-/// but the offset of the scale is disregarded.
-///
-///  - Parameters:
-///     - lhs: The left hand side measure for the operator.
-///     - rhs: The right hand side measure for the operator.
-///  - Returns: The result of the division of the two measures.
-public func /(lhs: Measure, rhs: Measure) -> Measure {
-    let unit = UnitDivision(numerator: lhs.unit, denominator: rhs.unit)
-    return Measure(lhs.scalarValue / rhs.scalarValue, unit: unit)
-}
-
-/// Divides the left hand value by the right hand measure and creates a new `Measure` with the
-/// result of the division.
-///
-/// The unit of the result is the reciprocal of the unit of the right hand side unit, because the unit of the
-/// `Double` value on the left hand side is  taken to be `.one`, i.e. to be dimensionless.
-///
-/// Points on a scale are used as non-scale measures where the value and unit are used in the division
-/// but the offset of the scale is disregarded.
-///
-///  - Parameters:
-///     - lhs: The left hand side value for the operator.
-///     - rhs: The right hand side measure for the operator.
-///  - Returns: The result of the division of the value by the measure.
-public func /(lhs: Double, rhs: Measure) -> Measure {
-    let unit = UnitDivision(numerator: .one, denominator: rhs.unit)
-    return Measure(lhs / rhs.scalarValue, unit: unit)
-}
-
-/// Divides the left hand measure by the right hand value and creates a new `Measure` with the
-/// result of the division.
-///
-/// The unit of the result is the same as the unit of the left hand side, because the unit of the
-/// `Double` value on the right hand side is  taken to be `.one`, i.e. to be dimensionless.
-///
-/// Points on a scale are used as non-scale measures where the value and unit are used in the division
-/// but the offset of the scale is disregarded.
-///
-///  - Parameters:
-///     - lhs: The left hand side measure for the operator.
-///     - rhs: The right hand side value for the operator.
-///  - Returns: The result of the division of the value by the measure.
-public func /(lhs: Measure, rhs: Double) -> Measure {
-    return Measure(lhs.scalarValue / rhs, unit: lhs.unit)
-}
-
-
-/// Raises the measure to the power of the value of the `exponent`.
-///
-/// The unit of the result is the unit of the `base` raised to the same power (`exponent`), i.e.
-/// a `UnitExponentiation`.
-///
-/// Points on a scale are used as non-scale measures where the value and unit are used in the power
-/// expression, but the offset of the scale is disregarded.
-///
-///  - Parameters:
-///     - base: The measure to be raised to the specified power.
-///     - exponent: The exponent of tje power expression.
-///  - Returns: The result of the measure raised to the power of the `exponent`.
-public func pow(_ base: Measure, _ exponent: Int) -> Measure {
-    let unit = UnitExponentiation(base: base.unit, exponent: exponent)
-    let value = pow(base.scalarValue, Double(exponent))
-    return Measure(value, unit: unit)
-}
-    
-    
-/// Raises the value to the power of the scalar value of the `exponent`.
-///
-/// The unit of the result is a dimesionless `Double` value.
-///
-///  - Parameters:
-///     - base: The value to be raised to the specified power.
-///     - exponent: The exponent of tje power expression.
-///  - Returns: The result of the value raised to the power of the `exponent`.
-public func pow(_ base: Double, _ exponent: Measure) -> Double {
-    let value = pow(base, Double(exponent.scalarValue))
-    return value
 }
 
 

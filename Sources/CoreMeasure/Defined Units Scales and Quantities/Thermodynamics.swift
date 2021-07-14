@@ -18,6 +18,6 @@ public extension Scale {
     
     // MARK: Scales
     
-    static let fahrenheitScale = IntervalScale(reltativeTo: Scale.kelvinScale, offset: Measure(-459.67, unit: .degreesFahrenheit))
-    static let réaumurScale = IntervalScale(reltativeTo: Scale.kelvinScale, offset: Measure(-218.52, unit: .degreesRéaumur))
+    static let fahrenheitScale = IntervalScale(reltativeTo: Scale.kelvinScale, offset: try! Measure(-459.67, unit: .degreesFahrenheit))
+    static let réaumurScale = IntervalScale(reltativeTo: Scale.kelvinScale, offset: try! Measure(-218.52, unit: .degreesRéaumur))
 }
