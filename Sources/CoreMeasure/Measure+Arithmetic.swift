@@ -275,8 +275,8 @@ public func exp(_ value: Measure) -> Measure {
 /// The result is a ``Measure`` with as unit the dimensionless unit `.one`.
 /// - Parameter value: The angle.
 /// - Returns: The sine of the angle.
-public func sin(_ value: Measure) throws -> Measure {
-    let valueInRadians = try value.convert(to: .radian)
+public func sin(_ value: Angle) -> Measure {
+    let valueInRadians = try! value.convert(to: .radian)
     return try! Measure(sin(valueInRadians.scalarValue), unit: .one)
 }
 
@@ -286,19 +286,86 @@ public func sin(_ value: Measure) throws -> Measure {
 /// The result is a ``Measure`` with as unit the dimensionless unit `.one`.
 /// - Parameter value: The angle.
 /// - Returns: The cosine of the angle.
-public func cos(_ value: Measure) throws -> Measure {
-    let valueInRadians = try value.convert(to: .radian)
+public func cos(_ value: Angle) -> Measure {
+    let valueInRadians = try! value.convert(to: .radian)
     return try! Measure(cos(valueInRadians.scalarValue), unit: .one)
 }
 
 /// Returns the tangent of the specified angle. The angle should be in radians or one of its derived unit, such
 /// as degrees, or arcseconds.
 ///
+/// If the argument is equal to `π`, the `scalarValue` of the result ``Measure`` will be
+/// `Double.infinity`.
+/// If the argument is equal to `-π`, the `scalarValue` of the result ``Measure`` will be
+/// `-Double.infinity`.
+///
 /// The result is a ``Measure`` with as unit the dimensionless unit `.one`.
 /// - Parameter value: The angle.
 /// - Returns: The tangent of the angle.
-public func tan(_ value: Measure) throws -> Measure {
-    let valueInRadians = try value.convert(to: .radian)
+public func tan(_ value: Angle) -> Measure {
+    let valueInRadians = try! value.convert(to: .radian)
+    if valueInRadians.scalarValue == Double.pi/2 {
+        return try! Measure(Double.infinity, unit: .one)
+    }
+    if valueInRadians.scalarValue == -Double.pi/2 {
+        return try! Measure(-Double.infinity, unit: .one)
+    }
     return try! Measure(tan(valueInRadians.scalarValue), unit: .one)
 }
 
+/// Returns the arcsine (inverse sine) of the argument as an  ``Angle`` in the range [-π/2, π/2].
+///
+/// If the argument value is greater than `1.0` or smaller than `-1.0`, the `scalarValue` of the result
+/// ``Measure`` will be equal to `Double.nan`.
+///
+/// The argument should be a dimensionless quantity but for ease of use dimensionfull arguments are
+/// allowed as if the argument is devided by the unit of the quantiy,
+/// e.g. asin(10 km) = asin(10 km / 1 km) = asin(10).
+/// - Parameter value: The argument to the arcsine.
+/// - Returns: The angle which is the result of taking the arcsine of the argument.
+public func asin(_ value: Measure) -> Angle {
+    return try! Angle(asin(value.scalarValue), unit: .radian)
+}
+
+/// Returns the arccosine (inverse cosine) of the argument as an  ``Angle`` in the range [0, 2π].
+///
+/// If the argument value is greater than `1.0` or smaller than `-1.0`, the `scalarValue` of the result
+/// ``Measure`` will be equal to `Double.nan`. 
+///
+/// The argument should be a dimensionless quantity but for ease of use dimensionfull arguments are
+/// allowed as if the argument is devided by the unit of the quantiy,
+/// e.g. acos(10 km) = acos(10 km / 1 km) = acos(10).
+/// - Parameter value: The argument to the arccosine.
+/// - Returns: The angle which is the result of taking the arccosine of the argument.
+public func acos(_ value: Measure) -> Angle {
+    return try! Angle(acos(value.scalarValue), unit: .radian)
+}
+
+/// Returns the arctangent (inverse tangent) of the argument as an  ``Angle`` in the range [-π/2, π/2].
+///
+/// If the value of the argument is `Double.infinity`, the result will be an angle of π/2 and if the value of
+/// the argument is `-Double.infinity`, the result will be an angle of -π/2 
+///
+/// The argument should be a dimensionless quantity but for ease of use dimensionfull arguments are
+/// allowed as if the argument is devided by the unit of the quantiy,
+/// e.g. atan(10 km) = atan(10 km / 1 km) = atan(10).
+/// - Parameter value: The argument to the arctangent.
+/// - Returns: The angle which is the result of taking the arctangent of the argument.
+public func atan(_ value: Measure) -> Angle {
+    return try! Angle(atan(value.scalarValue), unit: .radian)
+}
+
+/// Returns the arctangent (inverse tangent) of the division (numerator divided by the denominator of the two
+/// arguments as an  ``Angle`` in the range [-π, π].
+///
+/// The arguments should have the same dimensions.
+/// - Parameter value: The argument to the arctangent.
+/// - Throws: if the dimensions of the `numerator` and `denominator` are not the same (as is
+/// required) a ``UnitValidationError`` will be thrown.
+/// - Returns: The angle which is the result of taking the arctangent of the argument.
+public func atan(_ numerator: Measure, _ denominator: Measure) throws -> Angle {
+    if numerator.dimensions != denominator.dimensions {
+        throw UnitValidationError.differentDimensionality
+    }
+    return try! Angle(atan2(numerator.scalarValue, denominator.scalarValue), unit: .radian)
+}

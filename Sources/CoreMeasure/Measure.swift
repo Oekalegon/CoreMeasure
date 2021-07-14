@@ -28,6 +28,13 @@ public class Measure : CustomStringConvertible {
     /// The scale along which the value of the measure is expressed.
     public let scale: Scale?
     
+    /// The dimensions of the measure.
+    public var dimensions: Dimensions {
+        get {
+            return unit.dimensions
+        }
+    }
+    
     /// `true` when the measure is set along a scale.
     ///
     /// This is not necessarily a measurement scale, e.g. when the scale is a *nominal* or *ordinal*
