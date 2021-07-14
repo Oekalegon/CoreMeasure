@@ -10,6 +10,8 @@ import XCTest
 
 final class ArithmeticTests: XCTestCase {
     
+    // MARK: Trigonometric function tests
+    
     func testTrigonometry1() {
         let angle1 = try! Angle(30, unit: .degree)
         let sinAngle1 = sin(angle1)
@@ -165,5 +167,42 @@ final class ArithmeticTests: XCTestCase {
         XCTAssertNotNil(atan4)
         XCTAssertEqual(atan4!.scalarValue, -Double.pi/2, accuracy: 0.0000001)
         XCTAssertEqual(atan4!.unit, .radian)
+    }
+    
+    // MARK: SQRT tests
+    
+    func testSquarerootSpecialCases() {
+        let m1 = try! Measure(-1.0, unit: .one)
+        let sqrt1 = sqrt(m1)
+        XCTAssertNotNil(sqrt1)
+        XCTAssertTrue(sqrt1.scalarValue.isNaN)
+        
+        let m2 = try! Measure(0.0, unit: .one)
+        let sqrt2 = sqrt(m2)
+        XCTAssertNotNil(sqrt2)
+        XCTAssertEqual(sqrt2.scalarValue, 0.0)
+    }
+    
+    
+    // MARK: Logarithm tests
+    
+    func testLogarithmsSpecialCases() {
+        let m1 = try! Measure(-1.0, unit: .one)
+        let log1 = log(m1)
+        XCTAssertNotNil(log1)
+        XCTAssertTrue(log1.scalarValue.isNaN)
+        
+        let m2 = try! Measure(0.0, unit: .one)
+        let log2 = log(m2)
+        XCTAssertNotNil(log2)
+        XCTAssertEqual(log2.scalarValue, -Double.infinity)
+        
+        let log3 = log10(m1)
+        XCTAssertNotNil(log3)
+        XCTAssertTrue(log3.scalarValue.isNaN)
+        
+        let log4 = log10(m2)
+        XCTAssertNotNil(log4)
+        XCTAssertEqual(log4.scalarValue, -Double.infinity)
     }
 }
