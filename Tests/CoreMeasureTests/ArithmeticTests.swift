@@ -205,4 +205,39 @@ final class ArithmeticTests: XCTestCase {
         XCTAssertNotNil(log4)
         XCTAssertEqual(log4.scalarValue, -Double.infinity)
     }
+    
+    
+    // MARK: Scale arithmetic
+    
+    func testScaleArithmetic() {
+        let m1 = try! Measure(10.3, scale: .celciusScale)
+        let m2 = try! Measure(5.7, unit:.kelvin)
+        let m3 = try! Measure(5.6, scale: .kelvinScale)
+        let m4 = try? m1 + m2
+        XCTAssertNotNil(m4)
+        XCTAssertEqual(m4!.scalarValue, 16.0, accuracy: 0.000001)
+        XCTAssertEqual(m4!.unit , .degreeCelsius)
+        
+        let m5 = try? m1 + m3
+        XCTAssertNil(m5)
+        let m6 = try? m2 + m1
+        XCTAssertNil(m6)
+        
+        let m7 = try? m1 - m2
+        XCTAssertNotNil(m7)
+        XCTAssertEqual(m7!.scalarValue, 4.6, accuracy: 0.000001)
+        XCTAssertEqual(m7!.unit , .degreeCelsius)
+        
+        let m8 = try? m1 - m3
+        XCTAssertNotNil(m8)
+        XCTAssertNil(m8!.scale)
+        XCTAssertEqual(m8!.scalarValue, 277.85, accuracy: 0.000001)
+        XCTAssertEqual(m8!.unit , .kelvin)
+        
+        let m9 = try? m2 - m1
+        XCTAssertNil(m9)
+        
+        let m10 = try? m3 - m2
+        XCTAssertNil(m10)
+    }
 }

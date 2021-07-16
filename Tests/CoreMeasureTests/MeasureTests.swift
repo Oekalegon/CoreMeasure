@@ -217,4 +217,41 @@ final class MeasureTests: XCTestCase {
         XCTAssertTrue(t1c > t2r)
         XCTAssertTrue(t2c > t1r)
     }
+    
+    func testNominalAndOrdinalScales() {
+        let nominalScale = NominalScale(symbol: "S", labels: ["house", "office"])
+        let m1 = try? Measure("house", scale: nominalScale)
+        let m2 = try? Measure("house", scale: nominalScale)
+        let m3 = try? Measure("office", scale: nominalScale)
+        XCTAssertNotNil(m1)
+        XCTAssertNotNil(m2)
+        XCTAssertNotNil(m3)
+        XCTAssertEqual(m1, m2)
+        XCTAssertNotEqual(m1, m3)
+        let m4 = try? Measure("city", scale: nominalScale)
+        XCTAssertNil(m4)
+        
+        XCTAssertFalse(m1!<m2!)
+        XCTAssertFalse(m1!>m2!)
+        XCTAssertFalse(m2!>m3!)
+        
+        let ordinalScale = OrdinalScale(symbol: "S2", labels: ["hamlet", "town", "city", "metropolis"])
+        let m5 = try? Measure("metropolis", scale: ordinalScale)
+        let m6 = try? Measure("metropolis", scale: ordinalScale)
+        let m7 = try? Measure("hamlet", scale: ordinalScale)
+        XCTAssertNotNil(m5)
+        XCTAssertNotNil(m6)
+        XCTAssertNotNil(m7)
+        XCTAssertEqual(m5, m6)
+        XCTAssertNotEqual(m5, m7)
+        let m8 = try? Measure("cat", scale: ordinalScale)
+        XCTAssertNil(m8)
+        XCTAssertTrue(m5!>m7!)
+        XCTAssertTrue(m5!==m6!)
+        XCTAssertTrue(m5!<=m6!)
+        XCTAssertTrue(m5!>=m6!)
+        XCTAssertFalse(m5!<m7!)
+        
+        XCTAssertNotEqual(nominalScale, ordinalScale)
+    }
 }

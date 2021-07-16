@@ -57,11 +57,13 @@ public enum ScaleValidationError: Error {
     case cannotConvertScaleToUnit
     
     /// This error is thrown when a non-ratio or -interval scale is attemped to be used when calculating
-    /// conversion between scales.
+    /// conversion between scales. It is also thrown when an interval scale is used that is not defined
+    /// relative to a ratio scale.
     ///
     /// This happens when the scale is not an interval or ratio scale, e.g a nominal or ordinal scale, which
     /// do not define the proportionality of the values on the scale (ordinal scales) or even the order
-    /// (nominal scales).
+    /// (nominal scales). It also happens when the interval scale is not defined with relation to a
+    /// ratio scale.
     case notLinkedToARatioScale
     
     /// Thrown when a scale cannot be used in the arithmetic operation.
@@ -70,12 +72,24 @@ public enum ScaleValidationError: Error {
     /// side of the equation is a scale.
     case cannotUseScaleInArithmetic
     
+    /// Thrown when a measure is converted to or from a ``OrdinalScale`` or ``NominalScale``
+    /// as these scales have no established degree of variation.
+    case cannotConvertToOrFromNominalOrOrdinalScale
+    
+    /// The lable is unknown for the specified ``NominalScale`` of  ``OrdinalScale``.
+    case unknownLabelForNominalOrOrdinalScale
+    
     /// Thrown when one tries to use a nominal or ordinal scale in arithmetic.
     ///
     /// This happens when the scale is not an interval or ratio scale, e.g a nominal or ordinal scale, which
     /// do not define the proportionality of the values on the scale (ordinal scales) or even the order
     /// (nominal scales).
-    case cannotUseArithmeticOnNonMeasurementScale
+    case cannotUseArithmeticOnNominalOrOrdinalScale
+    
+    /// Thrown when a measure for a ratio scale is created with a negative value.
+    ///
+    /// Ratio scales defiine an absolute zero. Negative values are not allowed, therefore.
+    case negativeValuesNotAllowedInRatioScale
 }
 
 

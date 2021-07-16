@@ -22,6 +22,23 @@ public class Measure : CustomStringConvertible {
     /// The scalar value of the measure as expressed in the specified unit or along the specified scale.
     public let scalarValue: Double
     
+    /// The value of the measure as a `String`.
+    ///
+    /// In the case of a measure with a ``scalarValue``, this measure will be presented as the
+    /// scalar value with the unit appended.
+    /// In the case of a ``NominalScale`` or ``OrdinalScale``, this will be the label selected..
+    public var stringValue: String {
+        get {
+            if labelInScale != nil {
+                return labelInScale!
+            }
+            return self.description
+        }
+    }
+    
+    /// The selected label in a ``NominalScale`` or an ``OrdinalScale``.
+    private let labelInScale: String?
+    
     /// The unit in which the value of the measure is expressed.
     public let unit: Unit
     
@@ -45,14 +62,13 @@ public class Measure : CustomStringConvertible {
         }
     }
     
-    /// `true` when the measure is set along a measurement scale.
+    /// `true` when the measure is set along an ``IntervalScale`` or a ``RatioScale``.
     ///
-    /// This value may still be `false` even when a scale is used, i.e. when the scale is not a
-    /// measurement scale, e.g. when the scale is a *nominal* or *ordinal*
-    /// scale that is not ordered, or has no proportional intervals.
-    public var usesMeasurementScale : Bool {
+    /// This value may still be `false` even when a scale is used, i.e. when the scale is a ``NominalScale``
+    /// or an ``OrdinalScale`` that is not ordered, or has no proportional intervals.
+    public var usesIntervalOrRatioScale : Bool {
         get {
-            return scale != nil && (scale as? MeasurementScale) != nil
+            return scale != nil && ((scale as? IntervalScale) != nil || (scale as? RatioScale) != nil)
         }
     }
     
@@ -66,18 +82,76 @@ public class Measure : CustomStringConvertible {
         self.scalarValue = scalarValue
         self.unit = unit
         self.scale = nil
+        self.labelInScale = nil
     }
     
-    /// Creates a new `Measure` with the specified scalar value and along the specified measurement
+    /// Creates a new `Measure` with the specified label value and in the specified nominal
+    /// scale.
+    ///
+    /// If the specified label is not defined for the ``NominalScale``, a ``ScaleValidationError``
+    /// will be thrown.
+    /// - Parameters:
+    ///   - label: The label selected from the nominal scale.
+    ///   - scale: The  nominal scale.
+    /// - Throws: a ``ScaleValidationError`` when the specified label is not defined for the
+    /// ``NominalScale`` in its set of labels.
+    public init(_ label: String, scale: NominalScale) throws {
+        self.scalarValue = Double.nan
+        self.unit = .one
+        self.scale = scale
+        self.labelInScale = label
+        if !scale.labels.contains(label) {
+            throw ScaleValidationError.unknownLabelForNominalOrOrdinalScale
+        }
+    }
+    
+    /// Creates a new `Measure` with the specified label value and in the specified ordinal
+    /// scale.
+    ///
+    /// If the specified label is not defined for the ``OrdinalScale``, a ``ScaleValidationError``
+    /// will be thrown.
+    /// - Parameters:
+    ///   - label: The label selected from the ordinal scale.
+    ///   - scale: The  ordinal scale.
+    /// - Throws: a ``ScaleValidationError`` when the specified label is not defined for the
+    /// ``OrdinalScale`` in its set of labels.
+    public init(_ label: String, scale: OrdinalScale) throws {
+        self.scalarValue = Double.nan
+        self.unit = .one
+        self.scale = scale
+        self.labelInScale = label
+        if !scale.labels.contains(label) {
+            throw ScaleValidationError.unknownLabelForNominalOrOrdinalScale
+        }
+    }
+    
+    /// Creates a new `Measure` with the specified scalar value and along the specified interval
     /// scale.
     ///
     /// - Parameters:
     ///     - scalarValue: The scalar value of the `Measure`
     ///     - scale: The scale in which the scalar value is placed.
-    public init(_ scalarValue: Double, scale: MeasurementScale) throws {
+    public init(_ scalarValue: Double, scale: IntervalScale) throws {
         self.scalarValue = scalarValue
         self.unit = scale.unit
         self.scale = scale
+        self.labelInScale = nil
+    }
+    
+    /// Creates a new `Measure` with the specified scalar value and along the specified ratio scale.
+    ///
+    /// Negative values are not allowed as a ratio scale defines an absolute zero.
+    /// - Parameters:
+    ///     - scalarValue: The scalar value of the `Measure`
+    ///     - scale: The scale in which the scalar value is placed.
+    public init(_ scalarValue: Double, scale: RatioScale) throws {
+        if scalarValue < 0.0 {
+            throw ScaleValidationError.negativeValuesNotAllowedInRatioScale
+        }
+        self.scalarValue = scalarValue
+        self.unit = scale.unit
+        self.scale = scale
+        self.labelInScale = nil
     }
     
     /// Converts the `Measure` to the specified unit.
@@ -163,15 +237,19 @@ public class Measure : CustomStringConvertible {
         if self.scale == scale {
             return self
         }
+        if (self.scale as? NominalScale) != nil || (self.scale as? OrdinalScale) != nil ||
+            (scale as? NominalScale) != nil  || (scale as? OrdinalScale) != nil {
+            throw ScaleValidationError.cannotConvertToOrFromNominalOrOrdinalScale
+        }
         let selfRatioScale = try self.ratioScale(for: self.scale!)
         let argumentRatioScale = try self.ratioScale(for: scale)
         if selfRatioScale != argumentRatioScale {
             throw ScaleValidationError.noCommonRatioScale
         }
-        if (self.scale as! MeasurementScale).dimensions != (scale as! MeasurementScale).dimensions {
+        if selfRatioScale.dimensions != argumentRatioScale.dimensions {
             throw ScaleValidationError.differentDimensionality
         }
-        if (self.scale as! MeasurementScale).unit.baseUnit != (scale as! MeasurementScale).unit.baseUnit {
+        if selfRatioScale.unit.baseUnit != argumentRatioScale.unit.baseUnit {
             throw UnitValidationError.noCommonBaseUnit
         }
         var mtemp = self
@@ -184,11 +262,17 @@ public class Measure : CustomStringConvertible {
         }
         if scale == argumentRatioScale { // Convert to ratio scale
             let intervalScale = self.scale as! IntervalScale
-            return try Measure((self.scalarValue-intervalScale.offset.scalarValue)*self.unit.conversionFactor, scale: selfRatioScale)
+            if intervalScale.offset == nil {
+                throw ScaleValidationError.notLinkedToARatioScale
+            }
+            return try Measure((self.scalarValue-intervalScale.offset!.scalarValue)*self.unit.conversionFactor, scale: selfRatioScale)
         }
         // Convert from ratio scale
         let intervalScale = scale as! IntervalScale
-        return try Measure(self.scalarValue/intervalScale.unit.conversionFactor+intervalScale.offset.scalarValue, scale: intervalScale)
+        if intervalScale.offset == nil {
+            throw ScaleValidationError.notLinkedToARatioScale
+        }
+        return try Measure(self.scalarValue/intervalScale.unit.conversionFactor+intervalScale.offset!.scalarValue, scale: intervalScale)
     }
     
     private func ratioScale(for scale: Scale) throws -> RatioScale {
@@ -196,7 +280,10 @@ public class Measure : CustomStringConvertible {
         if (scale as? RatioScale) != nil {
             ratioScale = (scale as! RatioScale)
         } else if (scale as? IntervalScale) != nil {
-            ratioScale = (scale as! IntervalScale).ratioScale
+            if (scale as! IntervalScale).ratioScale == nil {
+                throw ScaleValidationError.notLinkedToARatioScale
+            }
+            ratioScale = (scale as! IntervalScale).ratioScale!
         } else {
             throw ScaleValidationError.notLinkedToARatioScale
         }
@@ -309,6 +396,12 @@ extension Measure: Equatable {
                     return false
                 }
             }
+            if lhs.labelInScale != nil { // is a nominal or ordinal scale
+                if lhs.labelInScale == rhs.labelInScale {
+                    return true
+                }
+                return false
+            }
         }
         if lhs.unit == rhs.unit && lhs.scalarValue == rhs.scalarValue {
             return true
@@ -346,12 +439,17 @@ extension Measure: Equatable {
 ///  otherwise.
 public func >(lhs: Measure, rhs: Measure) -> Bool {
     if lhs.usesScale || rhs.usesScale {
-        if lhs.usesMeasurementScale && rhs.usesMeasurementScale {
+        if lhs.usesIntervalOrRatioScale && rhs.usesIntervalOrRatioScale {
             let converted = try? rhs.convert(to: lhs.scale!)
             if converted == nil {
                 return false
             }
             return lhs.scalarValue > converted!.scalarValue
+        }
+        if (lhs.scale as? OrdinalScale) != nil && rhs.scale == lhs.scale {
+            let lIndex = (lhs.scale as! OrdinalScale).labels.firstIndex(of: lhs.stringValue)!
+            let rIndex = (rhs.scale as! OrdinalScale).labels.firstIndex(of: rhs.stringValue)!
+            return lIndex > rIndex
         }
         return false
     }
@@ -380,12 +478,17 @@ public func >(lhs: Measure, rhs: Measure) -> Bool {
 ///  `false` otherwise.
 public func >=(lhs: Measure, rhs: Measure) -> Bool {
     if lhs.usesScale || rhs.usesScale {
-        if lhs.usesMeasurementScale && rhs.usesMeasurementScale {
+        if lhs.usesIntervalOrRatioScale && rhs.usesIntervalOrRatioScale {
             let converted = try? rhs.convert(to: lhs.scale!)
             if converted == nil {
                 return false
             }
             return lhs.scalarValue >= converted!.scalarValue
+        }
+        if (lhs.scale as? OrdinalScale) != nil && rhs.scale == lhs.scale {
+            let lIndex = (lhs.scale as! OrdinalScale).labels.firstIndex(of: lhs.stringValue)!
+            let rIndex = (rhs.scale as! OrdinalScale).labels.firstIndex(of: lhs.stringValue)!
+            return lIndex >= rIndex
         }
         return false
     }
@@ -417,12 +520,17 @@ public func >=(lhs: Measure, rhs: Measure) -> Bool {
 ///  otherwise.
 public func <(lhs: Measure, rhs: Measure) -> Bool {
     if lhs.usesScale || rhs.usesScale {
-        if lhs.usesMeasurementScale && rhs.usesMeasurementScale {
+        if lhs.usesIntervalOrRatioScale && rhs.usesIntervalOrRatioScale {
             let converted = try? rhs.convert(to: lhs.scale!)
             if converted == nil {
                 return false
             }
             return lhs.scalarValue < converted!.scalarValue
+        }
+        if (lhs.scale as? OrdinalScale) != nil && rhs.scale == lhs.scale {
+            let lIndex = (lhs.scale as! OrdinalScale).labels.firstIndex(of: lhs.stringValue)!
+            let rIndex = (rhs.scale as! OrdinalScale).labels.firstIndex(of: lhs.stringValue)!
+            return lIndex < rIndex
         }
         return false
     }
@@ -451,12 +559,17 @@ public func <(lhs: Measure, rhs: Measure) -> Bool {
 ///  `false` otherwise.
 public func <=(lhs: Measure, rhs: Measure) -> Bool {
     if lhs.usesScale || rhs.usesScale {
-        if lhs.usesMeasurementScale && rhs.usesMeasurementScale {
+        if lhs.usesIntervalOrRatioScale && rhs.usesIntervalOrRatioScale {
             let converted = try? rhs.convert(to: lhs.scale!)
             if converted == nil {
                 return false
             }
             return lhs.scalarValue <= converted!.scalarValue
+        }
+        if (lhs.scale as? OrdinalScale) != nil && rhs.scale == lhs.scale {
+            let lIndex = (lhs.scale as! OrdinalScale).labels.firstIndex(of: lhs.stringValue)!
+            let rIndex = (rhs.scale as! OrdinalScale).labels.firstIndex(of: lhs.stringValue)!
+            return lIndex <= rIndex
         }
         return false
     }

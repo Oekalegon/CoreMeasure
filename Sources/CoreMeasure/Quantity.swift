@@ -24,13 +24,22 @@ public class Quantity : Measure {
         try self.init(symbol: nil, scalarValue, unit: unit)
     }
     
-    /// Creates a new `Quantity` with the specified scalar value and along the specified measurement
+    /// Creates a new `Quantity` with the specified scalar value and along the specified interval
     /// scale.
     ///
     /// - Parameters:
     ///     - scalarValue: The scalar value of the `Quantity`
     ///     - scale: The scale in which the scalar value is placed.
-    public override convenience init(_ scalarValue: Double, scale: MeasurementScale) throws {
+    public override convenience init(_ scalarValue: Double, scale: IntervalScale) throws {
+        try self.init(symbol: nil, scalarValue, scale: scale)
+    }
+    
+    /// Creates a new `Quantity` with the specified scalar value and along the specified ratio scale.
+    ///
+    /// - Parameters:
+    ///     - scalarValue: The scalar value of the `Quantity`
+    ///     - scale: The scale in which the scalar value is placed.
+    public override convenience init(_ scalarValue: Double, scale: RatioScale) throws {
         try self.init(symbol: nil, scalarValue, scale: scale)
     }
     
@@ -48,7 +57,7 @@ public class Quantity : Measure {
         try super.init(scalarValue, unit: unit)
     }
     
-    /// Creates a new `Quantity` with the specified scalar value and along the specified measurement
+    /// Creates a new `Quantity` with the specified scalar value and along the specified interval
     /// scale.
     ///
     /// - Parameters:
@@ -57,7 +66,20 @@ public class Quantity : Measure {
     ///     - scale: The scale in which the scalar value is placed.     
     /// - Throws: ``UnitValidationError`` or ``ScaleValidationError`` when the
     /// associated unit or scale is incompatible with the quantity or its value.
-    public init(symbol: String? = nil, _ scalarValue: Double, scale: MeasurementScale) throws {
+    public init(symbol: String? = nil, _ scalarValue: Double, scale: IntervalScale) throws {
+        self.symbol = symbol
+        try super.init(scalarValue, scale: scale)
+    }
+    
+    /// Creates a new `Quantity` with the specified scalar value and along the specified ratio scale.
+    ///
+    /// - Parameters:
+    ///   - symbol: The symbol used for the quantity.
+    ///     - scalarValue: The scalar value of the `Quantity`.
+    ///     - scale: The scale in which the scalar value is placed.
+    /// - Throws: ``UnitValidationError`` or ``ScaleValidationError`` when the
+    /// associated unit or scale is incompatible with the quantity or its value.
+    public init(symbol: String? = nil, _ scalarValue: Double, scale: RatioScale) throws {
         self.symbol = symbol
         try super.init(scalarValue, scale: scale)
     }

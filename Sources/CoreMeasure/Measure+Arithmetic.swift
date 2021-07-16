@@ -27,12 +27,12 @@ public func +(lhs: Measure, rhs: Measure) throws -> Measure {
     if rhs.usesScale {
         throw ScaleValidationError.cannotUseScaleInArithmetic
     }
-    if lhs.usesScale && !lhs.usesMeasurementScale {
-        throw ScaleValidationError.cannotUseArithmeticOnNonMeasurementScale
+    if lhs.usesScale && !lhs.usesIntervalOrRatioScale {
+        throw ScaleValidationError.cannotUseArithmeticOnNominalOrOrdinalScale
     }
     let converted = try rhs.convert(to: lhs.unit)
-    if lhs.usesMeasurementScale {
-        return try Measure(lhs.scalarValue + converted.scalarValue, scale: (lhs.scale as! MeasurementScale))
+    if lhs.usesIntervalOrRatioScale {
+        return try Measure(lhs.scalarValue + converted.scalarValue, scale: (lhs.scale as! IntervalScale))
     }
     return try Measure(lhs.scalarValue + converted.scalarValue, unit: lhs.unit)
 }
@@ -54,15 +54,25 @@ public func +(lhs: Measure, rhs: Measure) throws -> Measure {
 ///  - Returns: The result of the addition of the two measures. This result is another measure expressing
 ///  either a value with a unit, or a point on a measurement scale.
 public func -(lhs: Measure, rhs: Measure) throws -> Measure {
-    if rhs.usesScale {
+    if lhs.usesScale && !lhs.usesIntervalOrRatioScale {
+        throw ScaleValidationError.cannotUseArithmeticOnNominalOrOrdinalScale
+    }
+    if rhs.usesScale && !rhs.usesIntervalOrRatioScale {
+        throw ScaleValidationError.cannotUseArithmeticOnNominalOrOrdinalScale
+    }
+    if rhs.usesScale && !lhs.usesScale {
         throw ScaleValidationError.cannotUseScaleInArithmetic
     }
-    if lhs.usesScale && !lhs.usesMeasurementScale {
-        throw ScaleValidationError.cannotUseArithmeticOnNonMeasurementScale
+    if rhs.usesScale && lhs.usesScale {
+        let converted = try rhs.convert(to: lhs.scale!)
+        return try Measure(lhs.scalarValue - converted.scalarValue, unit: (lhs.scale as! IntervalScale).unit)
     }
     let converted = try rhs.convert(to: lhs.unit)
-    if lhs.usesMeasurementScale {
-        return try Measure(lhs.scalarValue - converted.scalarValue, scale: (lhs.scale as! MeasurementScale))
+    if lhs.usesIntervalOrRatioScale {
+        if (lhs.scale as? RatioScale) != nil {
+            return try Measure(lhs.scalarValue - converted.scalarValue, scale: (lhs.scale as! RatioScale))
+        }
+        return try Measure(lhs.scalarValue - converted.scalarValue, scale: (lhs.scale as! IntervalScale))
     }
     return try Measure(lhs.scalarValue - converted.scalarValue, unit: lhs.unit)
 }
