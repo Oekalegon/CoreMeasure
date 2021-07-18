@@ -445,8 +445,16 @@ public class Measure : CustomStringConvertible {
                     } else { // Test if digits after comma need to be added
                         tempmes = try! Measure(value, error: self.error, unit: self.unit).convert(to: compoundUnit.partialUnits.last!)
                         let ndigits = -Int(log10(tempmes.error!)) + 1
-                        let fractionDigits = Int(round(tempmes.scalarValue*pow(10.0,Double(ndigits))))
-                        display.append(MeasureDisplayComponent(type: .value, displayString: "\(fractionDigits)"))
+                        let poweredvalue = tempmes.scalarValue*pow(10.0,Double(ndigits))
+                        let fractionDigits = Int(round(poweredvalue))
+                        var fractionDigitsString = "\(fractionDigits)"
+                        if fractionDigitsString.count < ndigits {
+                            let diff = ndigits - fractionDigitsString.count
+                            for _ in 0..<diff {
+                                fractionDigitsString = "0\(fractionDigitsString)"
+                            }
+                        }
+                        display.append(MeasureDisplayComponent(type: .value, displayString: "\(fractionDigitsString)"))
                     }
                 }
                 if self.error != nil {
