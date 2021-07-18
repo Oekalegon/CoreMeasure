@@ -7,7 +7,7 @@
 
 import Foundation
 
-/// Errors concerning the validity of units.
+/// Errors concerning the validity of a ``Unit``.
 public enum UnitValidationError: Error {
     
     /// A ``Unit`` is defined for different dimensions than another ``Unit``, ``Scale``, or
@@ -38,7 +38,7 @@ public enum UnitValidationError: Error {
     case partialUnitInIllegalOrder
 }
 
-/// Errors concerning the validity of scales.
+/// Errors concerning the validity of a ``Scale``.
 public enum ScaleValidationError: Error {
     
     /// A ``Scale`` is defined for different dimensions than another ``Scale``, ``Unit``, or
@@ -92,8 +92,17 @@ public enum ScaleValidationError: Error {
     case negativeValuesNotAllowedInRatioScale
 }
 
+/// Errors concerning the validity of a ``Measure``.
+public enum MeasureValidationError: Error {
+    
+    /// Thrown when the value of the ``Measure`` has a non-positive error value.
+    ///
+    /// An error should always be positive.
+    case nonPositiveError
+}
 
-/// Errors concerning the validity of quantities.
+
+/// Errors concerning the validity of  a``Quantity``.
 public enum QuantityValidationError: Error {
     
     /// Thrown when the value of the ``Quantity`` is outside of the range defined for that quantity.

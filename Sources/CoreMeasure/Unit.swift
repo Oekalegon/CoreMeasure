@@ -331,11 +331,18 @@ public class UnitExponentiation : Unit {
 
 public class CompoundUnit : Unit {
     
-    /// An array containing the subunits in which the unit is represented.
+    /// An array containing the subunits in which the value is represented.
     ///
-    /// The order should be (and is checked to be so) from larger units. For instance, in the case of
-    /// angles, the order should be degree, arcminute, arcsecond.
+    /// The order should be (and is checked to be so) from larger units to smaller units. For instance,
+    /// in the case of angles, the order should be degree, arcminute, arcsecond.
     public let partialUnits: [Unit]
+    
+    /// An array containing the units in which the *error* of the value is represented.
+    ///
+    /// The order should be (and is checked to be so) from larger units to smaller units. For instance,
+    /// in the case of angles, the order should be degree, arcminute, arcsecond, milliarcsecond,
+    /// microarcsecond.
+    public let errorUnits: [Unit]
     
     /// A flag determining whether the sign symbol should always be prepended to the string description
     /// of the angle.
@@ -357,17 +364,32 @@ public class CompoundUnit : Unit {
     /// the value is positive.
     /// - Parameters:
     ///   - partialUnits: An array containing the subunits in order of size.
+    ///   - extraErrorUnits: Units that may also be used for errors after the `partialUnits`have
+    ///   been tried. This array is appended to the ``partialUnits`` array to create the
+    ///   ``errorUnits`` array. The last unit in ``partialUnits`` should be larger than the first
+    ///   unit in `extraErrorUnits`.
     ///   - displaySign: A flag determining whether the sign should alway be prepended to the angle.
     /// - Throws: A UnitValidationError is thrown when the `partialUnits` parameter did not
     /// contain any subunits, when the subunits did not have the same dimensions, or when smaller units
     /// were added before larger units (e.g. inches before feet).
-    public init(consistingOf partialUnits: [Unit], displaySign: Bool = false) throws {
+    public init(consistingOf partialUnits: [Unit], extraErrorUnits: [Unit] = [], displaySign: Bool = false) throws {
         self.partialUnits = partialUnits
         self.displaySign = displaySign
         if partialUnits.count < 1 {
             throw UnitValidationError.noPartialUnitsDefined
         }
-        let primaryUnit : Unit = partialUnits[0]
+        try CompoundUnit.testUnitOrder(partialUnits: partialUnits)
+        var tempar = [Unit]()
+        tempar.append(contentsOf: partialUnits)
+        tempar.append(contentsOf: extraErrorUnits)
+        self.errorUnits = tempar
+        try CompoundUnit.testUnitOrder(partialUnits: tempar)
+        super.init(symbol: "", baseUnit: partialUnits.first!, conversionFactor: partialUnits.first!.conversionFactor)
+    }
+    
+    // Test whether the units are ordered from large to small.
+    private static func testUnitOrder(partialUnits: [Unit]) throws {
+        let primaryUnit : Unit = partialUnits.first!
         let testMeasure = try! Measure(1.0, unit: primaryUnit)
         for (index, partialUnit) in partialUnits.enumerated() {
             if index > 0 {
@@ -379,7 +401,6 @@ public class CompoundUnit : Unit {
                 }
             }
         }
-        super.init(symbol: "", baseUnit: primaryUnit.baseUnit, conversionFactor: primaryUnit.conversionFactor)
     }
 }
 

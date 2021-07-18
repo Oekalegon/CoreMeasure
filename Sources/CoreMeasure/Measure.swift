@@ -7,6 +7,58 @@
 
 import Foundation
 
+public enum MeasureDisplayComponentType {
+    case plus
+    case minus
+    case value
+    case space
+    case unitSymbol
+    case unitDivider
+    case unitExponent
+    case plusMinus
+    case errorValue
+    case times
+    case tenPower
+    case tenExponent
+    case scaleLabel
+}
+
+public enum Baseline {
+    case normal
+    case sup
+    case sub
+}
+
+public struct MeasureDisplayComponent {
+    
+    public let type: MeasureDisplayComponentType
+    public let displayString: String
+    public let baseline: Baseline
+    
+    public init(type: MeasureDisplayComponentType, displayString: String? = nil, baseline: Baseline = .normal) {
+        self.type = type
+        self.baseline = baseline
+        switch type {
+        case .space:
+            self.displayString = " "
+        case .plus:
+            self.displayString = "+"
+        case .minus:
+            self.displayString = "-"
+        case .unitDivider:
+            self.displayString = "/"
+        case .plusMinus:
+            self.displayString = "±"
+        case .times:
+            self.displayString = "⨉"
+        case .tenPower:
+            self.displayString = "10"
+        default:
+            self.displayString = (displayString != nil) ? displayString! : ""
+        }
+    }
+}
+
 /// A `Measure` is a representation of a measurable value expressed in a specific unit or expressed on
 /// a specific measurement scale.
 ///
@@ -21,6 +73,11 @@ public class Measure : CustomStringConvertible {
     
     /// The scalar value of the measure as expressed in the specified unit or along the specified scale.
     public let scalarValue: Double
+    
+    /// The error on the scalar value.
+    ///
+    /// If the error is not known, set the ``error`` to `nil`.
+    public let error: Double?
     
     /// The value of the measure as a `String`.
     ///
@@ -76,10 +133,15 @@ public class Measure : CustomStringConvertible {
     /// unit.
     ///
     /// - Parameters:
-    ///     - scalarValue: The scalar value of the `Measure`
-    ///     - unit: The unit in which the scalar value is expressed.
-    public init(_ scalarValue: Double, unit: Unit) throws {
+    ///    - scalarValue: The scalar value of the `Measure`
+    ///    - error: The error on the scalar value: Set to `nil` if the error is not known.
+    ///    - unit: The unit in which the scalar value is expressed.
+    public init(_ scalarValue: Double, error: Double? = nil, unit: Unit) throws {
         self.scalarValue = scalarValue
+        if error != nil && error! <= 0 {
+            throw MeasureValidationError.nonPositiveError
+        }
+        self.error = error
         self.unit = unit
         self.scale = nil
         self.labelInScale = nil
@@ -98,6 +160,7 @@ public class Measure : CustomStringConvertible {
     public init(_ label: String, scale: NominalScale) throws {
         self.scalarValue = Double.nan
         self.unit = .one
+        self.error = nil
         self.scale = scale
         self.labelInScale = label
         if !scale.labels.contains(label) {
@@ -118,6 +181,7 @@ public class Measure : CustomStringConvertible {
     public init(_ label: String, scale: OrdinalScale) throws {
         self.scalarValue = Double.nan
         self.unit = .one
+        self.error = nil
         self.scale = scale
         self.labelInScale = label
         if !scale.labels.contains(label) {
@@ -129,10 +193,15 @@ public class Measure : CustomStringConvertible {
     /// scale.
     ///
     /// - Parameters:
-    ///     - scalarValue: The scalar value of the `Measure`
-    ///     - scale: The scale in which the scalar value is placed.
-    public init(_ scalarValue: Double, scale: IntervalScale) throws {
+    ///    - scalarValue: The scalar value of the `Measure`
+    ///    - error: The error on the scalar value: Set to `nil` if the error is not known.
+    ///    - scale: The scale in which the scalar value is placed.
+    public init(_ scalarValue: Double, error: Double? = nil, scale: IntervalScale) throws {
         self.scalarValue = scalarValue
+        if error != nil && error! <= 0 {
+            throw MeasureValidationError.nonPositiveError
+        }
+        self.error = error
         self.unit = scale.unit
         self.scale = scale
         self.labelInScale = nil
@@ -142,13 +211,18 @@ public class Measure : CustomStringConvertible {
     ///
     /// Negative values are not allowed as a ratio scale defines an absolute zero.
     /// - Parameters:
-    ///     - scalarValue: The scalar value of the `Measure`
-    ///     - scale: The scale in which the scalar value is placed.
-    public init(_ scalarValue: Double, scale: RatioScale) throws {
+    ///    - scalarValue: The scalar value of the `Measure`
+    ///    - error: The error on the scalar value: Set to `nil` if the error is not known.
+    ///    - scale: The scale in which the scalar value is placed.
+    public init(_ scalarValue: Double, error: Double? = nil, scale: RatioScale) throws {
         if scalarValue < 0.0 {
             throw ScaleValidationError.negativeValuesNotAllowedInRatioScale
         }
         self.scalarValue = scalarValue
+        if error != nil && error! <= 0 {
+            throw MeasureValidationError.nonPositiveError
+        }
+        self.error = error
         self.unit = scale.unit
         self.scale = scale
         self.labelInScale = nil
@@ -174,7 +248,7 @@ public class Measure : CustomStringConvertible {
     /// other method ``convert(to:)-k653`` with `.kelvinScale` as `scale`.
     ///
     /// - Parameters:
-    ///     - unit: The unit to which the measure should be converted.
+    ///    - unit: The unit to which the measure should be converted.
     /// - Throws: a ``UnitValidationError`` when the unit of the receiver has different
     ///     dimensions than the unit to which it needs to be converted, or when the unit of the receiver
     ///     and the specified unit have no common base unit.
@@ -192,7 +266,7 @@ public class Measure : CustomStringConvertible {
             throw ScaleValidationError.cannotConvertScaleToUnit
         }
         let conversionFactor = self.unit.conversionFactor / unit.conversionFactor
-        return try Measure(self.scalarValue*conversionFactor, unit: unit)
+        return try Measure(self.scalarValue*conversionFactor, error: (self.error != nil) ? self.error!*conversionFactor: nil, unit: unit)
     }
     
     
@@ -221,7 +295,7 @@ public class Measure : CustomStringConvertible {
     /// *difference*. just like the current `Measure`.
     ///
     /// - Parameters:
-    ///     - scale: The scale to which the measure should be converted.
+    ///    - scale: The scale to which the measure should be converted.
     /// - Throws: a ``UnitValidationError`` when a measure that is not related to any
     ///     scale is to be converted to a scale or when the scale of the receiver and the conversion
     ///     scale have incompatible units that have no common base unit.
@@ -265,14 +339,18 @@ public class Measure : CustomStringConvertible {
             if intervalScale.offset == nil {
                 throw ScaleValidationError.notLinkedToARatioScale
             }
-            return try Measure((self.scalarValue-intervalScale.offset!.scalarValue)*self.unit.conversionFactor, scale: selfRatioScale)
+            return try Measure((self.scalarValue-intervalScale.offset!.scalarValue)*self.unit.conversionFactor,
+                               error: (self.error != nil) ? (self.error!-intervalScale.offset!.scalarValue)*self.unit.conversionFactor : nil,
+                               scale: selfRatioScale)
         }
         // Convert from ratio scale
         let intervalScale = scale as! IntervalScale
         if intervalScale.offset == nil {
             throw ScaleValidationError.notLinkedToARatioScale
         }
-        return try Measure(self.scalarValue/intervalScale.unit.conversionFactor+intervalScale.offset!.scalarValue, scale: intervalScale)
+        return try Measure(self.scalarValue/intervalScale.unit.conversionFactor+intervalScale.offset!.scalarValue,
+                           error: (self.error != nil) ? self.error!/intervalScale.unit.conversionFactor+intervalScale.offset!.scalarValue : nil,
+                           scale: intervalScale)
     }
     
     private func ratioScale(for scale: Scale) throws -> RatioScale {
@@ -296,79 +374,211 @@ public class Measure : CustomStringConvertible {
     /// NB. Values for `Measure`s on a scale will be expressed in the same way.
     public var description: String {
         get {
-            if (unit as? CompoundUnit) != nil {
-                let components = componentsForCompoundUnit(for: (unit as! CompoundUnit).partialUnits, value: self)
-                var str = ""
-                if components.sign > 0 {
-                    if (unit as! CompoundUnit).displaySign {
-                        str = "+"
-                    }
-                } else if components.sign < 0 {
-                    str = "-"
+            let components = self.componentsForDisplay
+            var str=""
+            for component in components {
+                if component.type != .plus {
+                    str = "\(str)\(component.displayString)"
                 }
-                var spacer = ""
-                for component in components.components {
-                    let intValue = Int(component.measure.scalarValue)
-                    let cunit = component.measure.unit
-                    var digitStr = ""
-                    if component.ndigits > 0 {
-                        for _ in 0..<component.ndigits {
-                            digitStr = "\(digitStr)0"
-                        }
-                    }
-                    if cunit == .degree || cunit == .arcminute || cunit == .arcsecond || cunit == .angleHour || cunit == .angleMinute || cunit == .angleSecond {
-                        str = "\(str)\(spacer)\(digitStr)\(intValue)\(cunit.symbol)"
-                    } else {
-                        str = "\(str)\(spacer)\(digitStr)\(intValue)\(cunit.symbol)"
-                    }
-                    str = str.trimmingCharacters(in: .whitespaces)
-                    spacer = " "
+                if component.type == .tenPower {
+                    str = "\(str)^"
                 }
-                return str
             }
-            if unit == .degree || unit == .arcminute || unit == .arcsecond || unit == .angleHour || unit == .angleMinute || unit == .angleSecond {
-                return "\(scalarValue)\(unit.symbol)"
-            }
-            return "\(scalarValue) \(unit.symbol)"
+            return str
         }
     }
     
-    private func componentsForCompoundUnit(for compoundUnits: [Unit], position: Int = 0, value: Measure) -> (sign: Int16, components: [(measure: Measure, ndigits: Int, nfraction: Int)]) {
-        var components = [(measure: Measure, ndigits: Int, nfraction: Int)]()
-        var roundingFactor = 0.0
-        var measure = value
-        var sign : Int16 = 1
-        if position == 0 {
-            let smallestUnit = compoundUnits.last!
-            var roundingFactorMeasure = try! Measure(0.5, unit: smallestUnit)
-            roundingFactorMeasure = try! roundingFactorMeasure.convert(to: value.unit)
-            roundingFactor = roundingFactorMeasure.scalarValue
-            var scalarValue = value.scalarValue
-            if scalarValue < 0 {
-                sign = -1
-                scalarValue = -scalarValue
+    public var componentsForDisplay : [MeasureDisplayComponent] {
+        get {
+            var display = [MeasureDisplayComponent]()
+            if self.scalarValue.isNaN {
+                display.append(MeasureDisplayComponent(type: .value, displayString: "NaN"))
+            } else if self.scalarValue.isInfinite {
+                if self.scalarValue == -Double.infinity {
+                    display.append(MeasureDisplayComponent(type: .value, displayString: "-∞"))
+                } else {
+                    display.append(MeasureDisplayComponent(type: .value, displayString: "∞"))
+                }
+            } else if self.usesScale && !self.usesIntervalOrRatioScale {
+                display.append(MeasureDisplayComponent(type: .scaleLabel, displayString: self.stringValue))
+            } else if (unit as? CompoundUnit) != nil {
+                let compoundUnit = unit as! CompoundUnit
+                var value = fabs(self.scalarValue)
+                if self.scalarValue > 0 && compoundUnit.displaySign {
+                    display.append(MeasureDisplayComponent(type: .plus))
+                } else if self.scalarValue < 0 {
+                    display.append(MeasureDisplayComponent(type: .minus))
+                }
+                var error: Double
+                if self.error != nil {
+                    error = self.error!
+                } else { // no error set -> use an error of 1 <smallest-unit>
+                    error = (try! Measure(1.0, unit: compoundUnit.partialUnits.last!).convert(to: self.unit)).scalarValue
+                }
+                value = round(1/error * value) * error // Rounding to the error
+                var previousUnit : Unit? = nil
+                for componentUnit in compoundUnit.partialUnits {
+                    var tempmes = try! Measure(value, error: error, unit: self.unit)
+                    tempmes = try! tempmes.convert(to: componentUnit)
+                    var inttempmes = try! Measure(Double(Int(tempmes.scalarValue)), unit: componentUnit)
+                    if tempmes.error! >= 1.0 {
+                        inttempmes = try! Measure(round(tempmes.scalarValue), unit: componentUnit)
+                    }
+                    var valueString = "\(Int(inttempmes.scalarValue))"
+                    if previousUnit != nil {
+                        let testMeasure = try! Measure(1.0, unit: previousUnit!).convert(to: componentUnit)
+                        let nrdigits = Int(log10(testMeasure.scalarValue)) + 1 - valueString.count
+                        for _ in 0..<nrdigits {
+                            valueString = "0\(valueString)"
+                        }
+                    }
+                    previousUnit = componentUnit
+                    display.append(MeasureDisplayComponent(type: .value, displayString: valueString))
+                    display.append(contentsOf: Measure.unitComponentForDisplay(unit: componentUnit))
+                    if tempmes.error! >= 1.0 {
+                        break
+                    }
+                    tempmes = try! inttempmes.convert(to: self.unit)
+                    value = value - tempmes.scalarValue
+                    if compoundUnit != compoundUnit.partialUnits.last {
+                        display.append(MeasureDisplayComponent(type: .space))
+                    }
+                }
+                if self.error != nil {
+                    display.append(MeasureDisplayComponent(type: .space))
+                    var selectedMeasure : Measure? = nil
+                    for errorUnit in compoundUnit.errorUnits {
+                        var errorMeasure = try! Measure(self.error!, error: self.error!, unit: self.unit)
+                        errorMeasure = try! errorMeasure.convert(to: errorUnit)
+                        var testError = 1.0
+                        if errorMeasure.scalarValue < 1.0 {
+                            let logerror = Double(Int(log10(errorMeasure.scalarValue)))
+                            testError = pow(10.0, logerror)
+                        }
+                        selectedMeasure = try! Measure(errorMeasure.scalarValue, error: testError, unit: errorUnit)
+                        if selectedMeasure!.scalarValue >= 1.0 || errorUnit == compoundUnit.errorUnits.last! {
+                            let errorDisplay = selectedMeasure!.componentsForDisplay
+                            for item in errorDisplay {
+                                if item.type == .value {
+                                    display.append(MeasureDisplayComponent(type: .plusMinus))
+                                    display.append(MeasureDisplayComponent(type: .errorValue, displayString: item.displayString))
+                                }
+                                if item.type == .tenExponent {
+                                    display.append(MeasureDisplayComponent(type: .space))
+                                    display.append(MeasureDisplayComponent(type: .times))
+                                    display.append(MeasureDisplayComponent(type: .space))
+                                    display.append(MeasureDisplayComponent(type: .tenPower))
+                                    display.append(MeasureDisplayComponent(type: .tenExponent, displayString: item.displayString))
+                                }
+                            }
+                            display.append(contentsOf: Measure.unitComponentForDisplay(unit: errorUnit))
+                            break
+                        }
+                    }
+                }
+            } else {
+                let valueError = Measure.roundByError(value: scalarValue, error: error)
+                if scalarValue < 0 {
+                    display.append(MeasureDisplayComponent(type: .minus))
+                }
+                display.append(MeasureDisplayComponent(type: .value, displayString: valueError.number))
+                if valueError.error != nil {
+                    display.append(MeasureDisplayComponent(type: .space))
+                    display.append(MeasureDisplayComponent(type: .plusMinus))
+                    display.append(MeasureDisplayComponent(type: .errorValue, displayString: valueError.error!))
+                }
+                if valueError.exponent != 0 {
+                    display.append(MeasureDisplayComponent(type: .space))
+                    display.append(MeasureDisplayComponent(type: .times))
+                    display.append(MeasureDisplayComponent(type: .space))
+                    display.append(MeasureDisplayComponent(type: .tenPower))
+                    display.append(MeasureDisplayComponent(type: .tenExponent, displayString: "\(valueError.exponent)"))
+                }
+                display.append(contentsOf: Measure.unitComponentForDisplay(unit: self.unit))
             }
-            measure = try! Measure(scalarValue+roundingFactor, unit: value.unit)
+            return display
         }
-        if compoundUnits.count > position {
-            let converted = try! measure.convert(to: compoundUnits[position])
-            // get number of digits
-            var ndigits = 0
-            if position > 0 {
-                let testm = try! Measure(1.0, unit:compoundUnits[position-1])
-                let maxm = try! testm.convert(to: compoundUnits[position])
-                ndigits = Int(log10(maxm.scalarValue))+1
-            }
-            let rounded = try! Measure(Double(Int(converted.scalarValue)), unit: converted.unit)
-            var digits = ndigits - 1
-            if rounded.scalarValue > 0.0 {
-                digits = ndigits - Int(log10(rounded.scalarValue))-1
-            }
-            let difference = try! converted - rounded
-            components.append((measure: rounded, ndigits: digits, nfraction: 0))
-            components.append(contentsOf: self.componentsForCompoundUnit(for: compoundUnits, position: position+1, value: difference).components)
+    }
+    
+    private static func unitComponentForDisplay(unit: Unit) -> [MeasureDisplayComponent] {
+        var display = [MeasureDisplayComponent]()
+        if unit != .degree && unit != .arcminute && unit != .arcsecond && unit != .angleHour && unit != .angleMinute && unit != .angleSecond {
+            display.append(MeasureDisplayComponent(type: .space))
         }
-        return (sign: sign, components: components)
+        if unit == .angleHour || unit == .angleMinute || unit == .angleSecond {
+            display.append(MeasureDisplayComponent(type: .unitSymbol, displayString: unit.symbol, baseline: .sup))
+        } else if unit.symbol.count > 0 {
+            display.append(MeasureDisplayComponent(type: .unitSymbol, displayString: unit.symbol))
+        }
+        return display
+    }
+    
+    private static func roundByError(value: Double, error: Double?) -> (number: String, error: String?, exponent: Int) {
+        let absvalue = fabs(value)
+        var logvalue = 0
+        if absvalue > 0 {
+            logvalue = Int(log10(absvalue))
+        }
+        if absvalue < 1.0 {
+            logvalue = logvalue-1
+        }
+        var exponent = 0
+        var displayNumber = absvalue
+        var displayNumberString = ""
+        var displayErrorString : String? = nil
+        if error == nil || error! <= 0 {
+            if logvalue < -3 || logvalue > 3 {
+                exponent = logvalue
+                let expmultiplier = pow(10,Double(-logvalue))
+                let expvalue = expmultiplier*absvalue
+                let multiplier = pow(10, 9.0)
+                displayNumber = round(multiplier*expvalue)/multiplier
+            }
+            displayNumberString = "\(displayNumber)"
+        } else {
+            var displayError = error!
+            var logerror = Int(log10(error!))
+            if error! < 1.0 {
+                logerror = logerror-1
+            }
+            if logvalue >= 0 && logerror == 0 { // value >= 1 and error >=1 <10 -> 123±2
+                exponent = 0
+                let multiplier = pow(10, Double(-logerror))
+                displayNumber = Double(round(multiplier*absvalue)/multiplier)
+                displayError = Double(round(multiplier*error!)/multiplier)
+                displayNumberString = "\(Int(displayNumber))"
+                displayErrorString = "\(Int(displayError))"
+            } else if logvalue >= 0 && logerror < 0 { // value >= 1 and error < 1 -> 123.2±0.3
+                exponent = 0
+                let multiplier = pow(10, Double(-logerror))
+                displayNumber = Double(round(multiplier*absvalue)/multiplier)
+                displayError = Double(round(multiplier*error!)/multiplier)
+                displayNumberString = "\(displayNumber)"
+                displayErrorString = "\(displayError)"
+            } else if logvalue >= 0 && logerror > 0 { // value >= 1 and error > 10 -> 1.2±0.3x10^2
+                exponent = logvalue
+                let expmultiplier = pow(10,Double(-logvalue))
+                let expvalue = expmultiplier*absvalue
+                let experror = expmultiplier*error!
+                let multiplier = pow(10, Double(exponent-logerror))
+                displayNumber = Double(round(multiplier*expvalue)/multiplier)
+                displayError = Double(round(multiplier*experror)/multiplier)
+                displayNumberString = "\(displayNumber)"
+                displayErrorString = "\(displayError)"
+            } else { // value < 1 and error < 1 -> 1.2±0.3x10^-2
+                exponent = logvalue
+                let expmultiplier = pow(10,Double(-logvalue))
+                let expvalue = expmultiplier*absvalue
+                let experror = expmultiplier*error!
+                let multiplier = pow(10, Double(exponent-logerror))
+                displayNumber = Double(round(multiplier*expvalue)/multiplier)
+                displayError = Double(round(multiplier*experror)/multiplier)
+                displayNumberString = "\(displayNumber)"
+                displayErrorString = "\(displayError)"
+            }
+        }
+        
+        return (number: displayNumberString, error: displayErrorString, exponent: exponent)
     }
 }
 

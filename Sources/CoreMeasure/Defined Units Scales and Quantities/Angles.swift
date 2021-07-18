@@ -59,7 +59,7 @@ public extension Unit {
     
     /// This compound unit is used to specify angles in a combination of ``degree``, ``arcminute``,
     /// and ``arcsecond``, e.g. 12°45´22".
-    static let degreeArcminuteArcsecond = try! CompoundUnit(consistingOf: [degree, arcminute, arcsecond], displaySign: false)
+    static let degreeArcminuteArcsecond = try! CompoundUnit(consistingOf: [degree, arcminute, arcsecond], extraErrorUnits: [milliarcsecond, microarcsecond], displaySign: false)
     
     /// This compound unit is used to specify angles in a combination of ``degree``, ``arcminute``,
     /// and ``arcsecond``, e.g. +12°45´22".
@@ -68,14 +68,14 @@ public extension Unit {
     /// If you do not want the sign prepended (i.e. only with negative angles), use
     /// ``degreeArcminuteArcsecond``.
     /// It is used mostly to define geographical or astronomical longitudes and latitudes.
-    static let signDegreeArcminuteArcsecond = try! CompoundUnit(consistingOf: [degree, arcminute, arcsecond], displaySign: true)
+    static let signDegreeArcminuteArcsecond = try! CompoundUnit(consistingOf: [degree, arcminute, arcsecond], extraErrorUnits: [ milliarcsecond, microarcsecond], displaySign: true)
     
     /// This compound unit is used to specify angles in a combination of hours (``angleHour``) ,
     /// minutes (``angleMinute``), and seconds (``angleSecond``), e.g. 14h32m12s2.
     ///
     /// It is almost exclusively used in astronomy, especially when defining a longitude (right ascension) in
     /// the equatorial coordinate system.
-    static let angleHourMinuteSecond = try! CompoundUnit(consistingOf: [angleHour, angleMinute, angleSecond])
+    static let angleHourMinuteSecond = try! CompoundUnit(consistingOf: [angleHour, angleMinute, angleSecond], extraErrorUnits: [arcsecond, milliarcsecond, microarcsecond])
 }
 
 /// An angle is a measure of the angle of a rotation, the figure formed by two rays.
@@ -90,14 +90,15 @@ public class Angle: Quantity {
     /// Units like `.radians` or `.degrees` are used for angles.
     /// - Parameters:
     ///   - symbol: The symbol used for the angle quantity.
+    ///   - error: The error.
     ///   - value: The value for the angle.
     /// - Throws: A ``UnitValidationError`` when the dimensions of the value do not
     /// correspond to the dimensions of the quantity.
-    public override init(symbol: String? = nil, _ scalarValue: Double, unit: Unit) throws {
+    public override init(symbol: String? = nil, _ scalarValue: Double, error: Double? = nil, unit: Unit) throws {
         if unit.dimensions != Unit.radian.dimensions {
             throw UnitValidationError.differentDimensionality
         }
-        try super.init(symbol: symbol, scalarValue, unit: unit)
+        try super.init(symbol: symbol, scalarValue, error:error, unit: unit)
     }
 }
 
@@ -123,15 +124,16 @@ public class Latitude: Angle, Ranged {
     /// Units like `.radians` or `.degrees` are used for angles.
     /// - Parameters:
     ///   - symbol: The symbol used for the latitude quantity.
+    ///   - error: The error.
     ///   - value: The value for the latitude.
     /// - Throws: A ``UnitValidationError`` when the dimensions of the value do not
     /// correspond to the dimensions of the quantity.
-    public override init(symbol: String? = nil, _ scalarValue: Double, unit: Unit) throws {
+    public override init(symbol: String? = nil, _ scalarValue: Double, error: Double? = nil, unit: Unit) throws {
         if unit.dimensions != Unit.radian.dimensions {
             throw UnitValidationError.differentDimensionality
         }
         self.range = (min: try! Measure(-90, unit:.degree), max: try! Measure(90, unit:.degree))
-        try super.init(symbol: symbol, scalarValue, unit: unit)
+        try super.init(symbol: symbol, scalarValue, error: error, unit: unit)
         if self < self.range.min || self > self.range.max {
             throw QuantityValidationError.outOfRange
         }
@@ -143,7 +145,7 @@ public class NormalisedAngle: Angle, Ranged {
     public let range : (min: Measure, max: Measure)
     
     public init(symbol: String? = nil, _ scalarValue: Double,
-                         unit: Unit,
+                         unit: Unit, error: Double? = nil,
                          range: (min: Measure, max: Measure)=(min: try! Measure(0, unit:.degree), max: try! Measure(360, unit:.degree))) throws {
         if unit.dimensions != Unit.radian.dimensions {
             throw UnitValidationError.differentDimensionality
@@ -159,7 +161,7 @@ public class NormalisedAngle: Angle, Ranged {
         }
         self.range = setrange
         let tempMeasure2 = try Measure(convertedScalarValue, unit: .degree).convert(to: unit)
-        try super.init(symbol: symbol, tempMeasure2.scalarValue, unit: unit)
+        try super.init(symbol: symbol, tempMeasure2.scalarValue, error: error, unit: unit)
     }
 }
 
