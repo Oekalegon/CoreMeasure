@@ -440,8 +440,13 @@ public class Measure : CustomStringConvertible {
                     }
                     tempmes = try! inttempmes.convert(to: self.unit)
                     value = value - tempmes.scalarValue
-                    if compoundUnit != compoundUnit.partialUnits.last {
+                    if componentUnit != compoundUnit.partialUnits.last {
                         display.append(MeasureDisplayComponent(type: .space))
+                    } else { // Test if digits after comma need to be added
+                        tempmes = try! Measure(value, error: self.error, unit: self.unit).convert(to: compoundUnit.partialUnits.last!)
+                        let ndigits = -Int(log10(tempmes.error!)) + 1
+                        let fractionDigits = Int(round(tempmes.scalarValue*pow(10.0,Double(ndigits))))
+                        display.append(MeasureDisplayComponent(type: .value, displayString: "\(fractionDigits)"))
                     }
                 }
                 if self.error != nil {
@@ -481,11 +486,23 @@ public class Measure : CustomStringConvertible {
                 if scalarValue < 0 {
                     display.append(MeasureDisplayComponent(type: .minus))
                 }
-                display.append(MeasureDisplayComponent(type: .value, displayString: valueError.number))
+                var specialUnitCase = false // Replace decimal separator with the unit for certain cases - only if the exponent is 0
+                if valueError.exponent == 0 && (unit == .degree || unit == .arcminute || unit == .arcsecond || unit == .angleHour || unit == .angleMinute || unit == .angleSecond) {
+                    specialUnitCase = true
+                }
+                var valueString = valueError.number
+                if specialUnitCase {
+                    valueString = valueString.replacingOccurrences(of: ".", with: unit.symbol)
+                }
+                display.append(MeasureDisplayComponent(type: .value, displayString: valueString))
                 if valueError.error != nil {
+                    var errorString = valueError.error! // Replace decimal separator with the unit for certain cases - only if the exponent is 0
+                    if specialUnitCase {
+                        errorString = errorString.replacingOccurrences(of: ".", with: unit.symbol)
+                    }
                     display.append(MeasureDisplayComponent(type: .space))
                     display.append(MeasureDisplayComponent(type: .plusMinus))
-                    display.append(MeasureDisplayComponent(type: .errorValue, displayString: valueError.error!))
+                    display.append(MeasureDisplayComponent(type: .errorValue, displayString: errorString))
                 }
                 if valueError.exponent != 0 {
                     display.append(MeasureDisplayComponent(type: .space))
@@ -494,7 +511,9 @@ public class Measure : CustomStringConvertible {
                     display.append(MeasureDisplayComponent(type: .tenPower))
                     display.append(MeasureDisplayComponent(type: .tenExponent, displayString: "\(valueError.exponent)"))
                 }
-                display.append(contentsOf: Measure.unitComponentForDisplay(unit: self.unit))
+                if !specialUnitCase {
+                    display.append(contentsOf: Measure.unitComponentForDisplay(unit: self.unit))
+                }
             }
             return display
         }

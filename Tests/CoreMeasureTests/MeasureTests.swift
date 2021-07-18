@@ -296,6 +296,12 @@ final class MeasureTests: XCTestCase {
         let m16 = try! Measure(12340, unit: .metre)
         XCTAssertEqual(m16.description, "1.234 ⨉ 10^4 m")
         
+        let d1 = try! Measure(23.5384, error: 0.002, unit: .degree)
+        XCTAssertEqual(d1.description, "23°538 ±0°002")
+        
+        let d2 = try! Measure(0.0032, error: 0.0002, unit: .degree)
+        XCTAssertEqual(d2.description, "3.2 ±0.2 ⨉ 10^-3°")
+        
         let m17 = try! Measure(122.25, unit: .degreeArcminuteArcsecond)
         XCTAssertEqual(m17.description, "122° 15' 00\"")
         let m18 = try! Measure(-34.50, unit: .signDegreeArcminuteArcsecond)
@@ -326,14 +332,13 @@ final class MeasureTests: XCTestCase {
         m25 = try! m25.convert(to: .angleHourMinuteSecond)
         XCTAssertEqual(m25.description, "8h 09m 30s123 ±15 mas")
         
+        let m27 = try! Measure(122.2644444444+0.001/3600.0, error: 0.0011/3600.0,unit: .degreeArcminuteArcsecond)
+        XCTAssertEqual(m27.description, "122° 15' 52\"001 ±1 mas")
         // "122° 15' 52"126000000
-        let m27 = try! Measure(122.2644794444, error: 0.00000000000277777777778,unit: .degreeArcminuteArcsecond)
-        XCTAssertEqual(m27.description, "122° 15' 52\"13000000 ±0.01 μas")
-        // "122° 15' 52"126000000
-        let m28 = try! Measure(122.2644794444, error: 0.0000000000277777777778,unit: .degreeArcminuteArcsecond)
+        let m28 = try! Measure(122.2644444444+0.13/3600.0, error: 0.0000000000277777777778,unit: .degreeArcminuteArcsecond)
         XCTAssertEqual(m28.description, "122° 15' 52\"1300000 ±0.1 μas")
-        let m29 = try! Measure(122.2644794444, error: 0.000000000277777777778,unit: .degreeArcminuteArcsecond)
-        XCTAssertEqual(m29.description, "122° 15' 52\"1300000 ±1 μas")
+        let m29 = try! Measure(122.2644444444+0.13/3600.0, error: 0.000000000277777777778,unit: .degreeArcminuteArcsecond)
+        XCTAssertEqual(m29.description, "122° 15' 52\"130000 ±1 μas")
 
         let m26 = try! Measure(-34.516666, error: 0.01666666667, unit: .signDegreeArcminuteArcsecond)
         XCTAssertEqual(m26.description, "-34° 31' ±1'")
