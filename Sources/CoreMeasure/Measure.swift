@@ -7,57 +7,6 @@
 
 import Foundation
 
-public enum MeasureDisplayComponentType {
-    case plus
-    case minus
-    case value
-    case space
-    case unitSymbol
-    case unitDivider
-    case unitExponent
-    case plusMinus
-    case errorValue
-    case times
-    case tenPower
-    case tenExponent
-    case scaleLabel
-}
-
-public enum Baseline {
-    case normal
-    case sup
-    case sub
-}
-
-public struct MeasureDisplayComponent {
-    
-    public let type: MeasureDisplayComponentType
-    public let displayString: String
-    public let baseline: Baseline
-    
-    public init(type: MeasureDisplayComponentType, displayString: String? = nil, baseline: Baseline = .normal) {
-        self.type = type
-        self.baseline = baseline
-        switch type {
-        case .space:
-            self.displayString = " "
-        case .plus:
-            self.displayString = "+"
-        case .minus:
-            self.displayString = "-"
-        case .unitDivider:
-            self.displayString = "/"
-        case .plusMinus:
-            self.displayString = "±"
-        case .times:
-            self.displayString = "⨉"
-        case .tenPower:
-            self.displayString = "10"
-        default:
-            self.displayString = (displayString != nil) ? displayString! : ""
-        }
-    }
-}
 
 /// A `Measure` is a representation of a measurable value expressed in a specific unit or expressed on
 /// a specific measurement scale.
@@ -69,7 +18,8 @@ public struct MeasureDisplayComponent {
 /// result is expressed is adapted to the units of the arguments in the arithmetic expression. When dividing
 /// measures, of different units, say `5 m` by `2 s`, the resulting value will be expressed in the
 /// `UnitDivision` of the two units, i.e. `2.5 m/s`.
-public class Measure : CustomStringConvertible {
+open class Measure : CustomStringConvertible,
+                       StringDisplayComponentsProvider {
     
     /// The scalar value of the measure as expressed in the specified unit or along the specified scale.
     public let scalarValue: Double
@@ -377,10 +327,13 @@ public class Measure : CustomStringConvertible {
             let components = self.componentsForDisplay
             var str=""
             for component in components {
+                if component.type == .unitExponent {
+                    str = "\(str)^"
+                }
                 if component.type != .plus {
                     str = "\(str)\(component.displayString)"
                 }
-                if component.type == .tenPower {
+                if component.type == .basePower {
                     str = "\(str)^"
                 }
             }
@@ -388,26 +341,27 @@ public class Measure : CustomStringConvertible {
         }
     }
     
-    public var componentsForDisplay : [MeasureDisplayComponent] {
+    public var componentsForDisplay : [StringDisplayComponent] {
         get {
-            var display = [MeasureDisplayComponent]()
+            var display = [StringDisplayComponent]()
             if self.scalarValue.isNaN {
-                display.append(MeasureDisplayComponent(type: .value, displayString: "NaN"))
+                display.append(StringDisplayComponent(type: .value, displayString: "NaN"))
             } else if self.scalarValue.isInfinite {
                 if self.scalarValue == -Double.infinity {
-                    display.append(MeasureDisplayComponent(type: .value, displayString: "-∞"))
+                    display.append(StringDisplayComponent(type: .value, displayString: "-∞"))
                 } else {
-                    display.append(MeasureDisplayComponent(type: .value, displayString: "∞"))
+                    display.append(StringDisplayComponent(type: .value, displayString: "∞"))
                 }
             } else if self.usesScale && !self.usesIntervalOrRatioScale {
-                display.append(MeasureDisplayComponent(type: .scaleLabel, displayString: self.stringValue))
+                // No scalar value, only add label
+                display.append(StringDisplayComponent(type: .scaleLabel, displayString: self.stringValue))
             } else if (unit as? CompoundUnit) != nil {
                 let compoundUnit = unit as! CompoundUnit
                 var value = fabs(self.scalarValue)
                 if self.scalarValue > 0 && compoundUnit.displaySign {
-                    display.append(MeasureDisplayComponent(type: .plus))
+                    display.append(StringDisplayComponent(type: .plus))
                 } else if self.scalarValue < 0 {
-                    display.append(MeasureDisplayComponent(type: .minus))
+                    display.append(StringDisplayComponent(type: .minus))
                 }
                 var error: Double
                 if self.error != nil {
@@ -433,7 +387,7 @@ public class Measure : CustomStringConvertible {
                         }
                     }
                     previousUnit = componentUnit
-                    display.append(MeasureDisplayComponent(type: .value, displayString: valueString))
+                    display.append(StringDisplayComponent(type: .value, displayString: valueString))
                     display.append(contentsOf: Measure.unitComponentForDisplay(unit: componentUnit))
                     if tempmes.error! >= 1.0 {
                         break
@@ -441,7 +395,7 @@ public class Measure : CustomStringConvertible {
                     tempmes = try! inttempmes.convert(to: self.unit)
                     value = value - tempmes.scalarValue
                     if componentUnit != compoundUnit.partialUnits.last {
-                        display.append(MeasureDisplayComponent(type: .space))
+                        display.append(StringDisplayComponent(type: .space))
                     } else { // Test if digits after comma need to be added
                         tempmes = try! Measure(value, error: self.error, unit: self.unit).convert(to: compoundUnit.partialUnits.last!)
                         let ndigits = -Int(log10(tempmes.error!)) + 1
@@ -454,11 +408,11 @@ public class Measure : CustomStringConvertible {
                                 fractionDigitsString = "0\(fractionDigitsString)"
                             }
                         }
-                        display.append(MeasureDisplayComponent(type: .value, displayString: "\(fractionDigitsString)"))
+                        display.append(StringDisplayComponent(type: .value, displayString: "\(fractionDigitsString)"))
                     }
                 }
                 if self.error != nil {
-                    display.append(MeasureDisplayComponent(type: .space))
+                    display.append(StringDisplayComponent(type: .space))
                     var selectedMeasure : Measure? = nil
                     for errorUnit in compoundUnit.errorUnits {
                         var errorMeasure = try! Measure(self.error!, error: self.error!, unit: self.unit)
@@ -470,19 +424,28 @@ public class Measure : CustomStringConvertible {
                         }
                         selectedMeasure = try! Measure(errorMeasure.scalarValue, error: testError, unit: errorUnit)
                         if selectedMeasure!.scalarValue >= 1.0 || errorUnit == compoundUnit.errorUnits.last! {
-                            let errorDisplay = selectedMeasure!.componentsForDisplay
-                            for item in errorDisplay {
-                                if item.type == .value {
-                                    display.append(MeasureDisplayComponent(type: .plusMinus))
-                                    display.append(MeasureDisplayComponent(type: .errorValue, displayString: item.displayString))
+                            if errorMeasure.scalarValue >= 1.0 {
+                                let errorDisplay = selectedMeasure!.componentsForDisplay
+                                for item in errorDisplay {
+                                    if item.type == .value {
+                                        display.append(StringDisplayComponent(type: .plusMinus))
+                                        display.append(StringDisplayComponent(type: .errorValue, displayString: item.displayString))
+                                    }
+                                    if item.type == .exponent {
+                                        display.append(StringDisplayComponent(type: .space))
+                                        display.append(StringDisplayComponent(type: .times))
+                                        display.append(StringDisplayComponent(type: .space))
+                                        display.append(StringDisplayComponent(type: .basePower, displayString: "10"))
+                                        display.append(StringDisplayComponent(type: .exponent, displayString: item.displayString))
+                                    }
                                 }
-                                if item.type == .tenExponent {
-                                    display.append(MeasureDisplayComponent(type: .space))
-                                    display.append(MeasureDisplayComponent(type: .times))
-                                    display.append(MeasureDisplayComponent(type: .space))
-                                    display.append(MeasureDisplayComponent(type: .tenPower))
-                                    display.append(MeasureDisplayComponent(type: .tenExponent, displayString: item.displayString))
-                                }
+                            } else {
+                                let logerror = Int(log10(errorMeasure.scalarValue))
+                                let multiplier = pow(10, Double(-logerror+1))
+                                let reducedErrorValue = round(errorMeasure.scalarValue*multiplier)/multiplier
+                                let errorString = ("\(reducedErrorValue)")
+                                display.append(StringDisplayComponent(type: .plusMinus))
+                                display.append(StringDisplayComponent(type: .errorValue, displayString: errorString))
                             }
                             display.append(contentsOf: Measure.unitComponentForDisplay(unit: errorUnit))
                             break
@@ -492,7 +455,7 @@ public class Measure : CustomStringConvertible {
             } else {
                 let valueError = Measure.roundByError(value: scalarValue, error: error)
                 if scalarValue < 0 {
-                    display.append(MeasureDisplayComponent(type: .minus))
+                    display.append(StringDisplayComponent(type: .minus))
                 }
                 var specialUnitCase = false // Replace decimal separator with the unit for certain cases - only if the exponent is 0
                 if valueError.exponent == 0 && (unit == .degree || unit == .arcminute || unit == .arcsecond || unit == .angleHour || unit == .angleMinute || unit == .angleSecond) {
@@ -502,22 +465,22 @@ public class Measure : CustomStringConvertible {
                 if specialUnitCase {
                     valueString = valueString.replacingOccurrences(of: ".", with: unit.symbol)
                 }
-                display.append(MeasureDisplayComponent(type: .value, displayString: valueString))
+                display.append(StringDisplayComponent(type: .value, displayString: valueString))
                 if valueError.error != nil {
                     var errorString = valueError.error! // Replace decimal separator with the unit for certain cases - only if the exponent is 0
                     if specialUnitCase {
                         errorString = errorString.replacingOccurrences(of: ".", with: unit.symbol)
                     }
-                    display.append(MeasureDisplayComponent(type: .space))
-                    display.append(MeasureDisplayComponent(type: .plusMinus))
-                    display.append(MeasureDisplayComponent(type: .errorValue, displayString: errorString))
+                    display.append(StringDisplayComponent(type: .space))
+                    display.append(StringDisplayComponent(type: .plusMinus))
+                    display.append(StringDisplayComponent(type: .errorValue, displayString: errorString))
                 }
                 if valueError.exponent != 0 {
-                    display.append(MeasureDisplayComponent(type: .space))
-                    display.append(MeasureDisplayComponent(type: .times))
-                    display.append(MeasureDisplayComponent(type: .space))
-                    display.append(MeasureDisplayComponent(type: .tenPower))
-                    display.append(MeasureDisplayComponent(type: .tenExponent, displayString: "\(valueError.exponent)"))
+                    display.append(StringDisplayComponent(type: .space))
+                    display.append(StringDisplayComponent(type: .times))
+                    display.append(StringDisplayComponent(type: .space))
+                    display.append(StringDisplayComponent(type: .basePower, displayString: "10"))
+                    display.append(StringDisplayComponent(type: .exponent, displayString: "\(valueError.exponent)"))
                 }
                 if !specialUnitCase {
                     display.append(contentsOf: Measure.unitComponentForDisplay(unit: self.unit))
@@ -527,15 +490,15 @@ public class Measure : CustomStringConvertible {
         }
     }
     
-    private static func unitComponentForDisplay(unit: Unit) -> [MeasureDisplayComponent] {
-        var display = [MeasureDisplayComponent]()
+    private static func unitComponentForDisplay(unit: Unit) -> [StringDisplayComponent] {
+        var display = [StringDisplayComponent]()
         if unit != .degree && unit != .arcminute && unit != .arcsecond && unit != .angleHour && unit != .angleMinute && unit != .angleSecond {
-            display.append(MeasureDisplayComponent(type: .space))
+            display.append(StringDisplayComponent(type: .space))
         }
         if unit == .angleHour || unit == .angleMinute || unit == .angleSecond {
-            display.append(MeasureDisplayComponent(type: .unitSymbol, displayString: unit.symbol, baseline: .sup))
+            display.append(StringDisplayComponent(type: .unitSymbol, displayString: unit.symbol, baseline: .sup))
         } else if unit.symbol.count > 0 {
-            display.append(MeasureDisplayComponent(type: .unitSymbol, displayString: unit.symbol))
+            display.append(contentsOf: unit.componentsForDisplay)
         }
         return display
     }

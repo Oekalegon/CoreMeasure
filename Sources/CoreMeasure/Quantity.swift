@@ -9,7 +9,7 @@ import Foundation
 
 /// The `Quantity` class represents a physical quantity as a subclass of ``Measure``, with
 /// added functionality.
-public class Quantity : Measure {
+open class Quantity : Measure {
     
     /// The symbol used fot the quantity, may be `nil`.
     public let symbol: String?

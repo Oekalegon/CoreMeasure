@@ -13,7 +13,7 @@
 /// of length with exponent value 1 and time with exponent value -2. Usually this is represented as
 /// (T=-2, L=1).
 public enum Dimension : String, CaseIterable {
-    
+     
     /// The time dimension.
     case T
     

@@ -7,10 +7,22 @@
 
 import Foundation
 
-public class Unit : Equatable, Hashable {
+public class Unit : Equatable, Hashable,
+                    StringDisplayComponentsProvider,
+                    CustomStringConvertible{
     
     public let identifier: String
-    public let symbol: String
+    public var symbol: String {
+        get {
+            if _symbol != nil {
+                return _symbol!
+            } else {
+                return self.description
+            }
+        }
+    }
+    
+    fileprivate let _symbol: String?
     public let dimensions: Dimensions
     public fileprivate(set) var isBaseUnit: Bool = false
     private var _baseUnit: Unit?
@@ -23,12 +35,35 @@ public class Unit : Equatable, Hashable {
         }
         set(newValue) {
             _baseUnit = newValue
+            self.unitExponents = _baseUnit!.unitExponents
             if _baseUnit == nil {
                 self.isBaseUnit = true
             }
         }
     }
     public fileprivate(set) var conversionFactor: Double
+ 
+    public var componentsForDisplay: [StringDisplayComponent] {
+        get {
+            return [StringDisplayComponent(type: .unitSymbol, displayString: self.symbol)]
+        }
+    }
+    
+    public var description: String {
+        get {
+            var str=""
+            let components = self.componentsForDisplay
+            for component in components {
+                if component.type == .unitExponent {
+                    str = "\(str)^"
+                }
+                str = "\(str)\(component.displayString)"
+            }
+            return str
+        }
+    }
+    
+    internal var unitExponents: [(unit: Unit, exponent: Double)] = [(unit: Unit, exponent: Double)]()
     
     internal var baseUnitsPerDimension = [Dimension: [Unit: Double]]()
     
@@ -36,6 +71,7 @@ public class Unit : Equatable, Hashable {
         let dimensions = Dimensions()
         self.init(symbol: symbol, dimensions: dimensions)
         self.isBaseUnit = true
+        self.unitExponents = [(unit: self, exponent: 1)]
     }
     
     public convenience init(symbol: String, dimension: Dimension) {
@@ -43,24 +79,82 @@ public class Unit : Equatable, Hashable {
         self.init(symbol: symbol, dimensions: dimensions)
         self.isBaseUnit = true
         self.baseUnitsPerDimension[dimension] = [self: 1]
+        self.unitExponents = [(unit: self, exponent: 1)]
     }
     
-    fileprivate init(symbol: String, baseUnit: Unit, conversionFactor: Double = 1.0, identifier: String = UUID().uuidString) {
+    fileprivate init(symbol: String?, baseUnit: Unit, conversionFactor: Double = 1.0, identifier: String = UUID().uuidString) {
         self.identifier = identifier
         self._baseUnit = baseUnit.baseUnit
         self.conversionFactor = conversionFactor
-        self.symbol = symbol
+        self._symbol = symbol
         self.dimensions = baseUnit.dimensions
         self.baseUnitsPerDimension = baseUnit.baseUnitsPerDimension
         isBaseUnit = false
+        self.unitExponents = baseUnit.unitExponents
     }
     
-    internal init(symbol: String, dimensions: Dimensions, identifier: String = UUID().uuidString) {
+    internal init(symbol: String?, dimensions: Dimensions, identifier: String = UUID().uuidString) {
         self.identifier = identifier
         self.conversionFactor = 1.0
-        self.symbol = symbol
+        self._symbol = symbol
         self.dimensions = dimensions
         isBaseUnit = true
+        self.unitExponents = [(unit: self, exponent: 1)]
+    }
+    
+    internal func uniExponentsAdd(unit: Unit, exponent: Double) {
+        for unitEuTuple in unit.unitExponents {
+            var found = false
+            var pos = 0
+            for eutuple in unitExponents {
+                if eutuple.unit == unitEuTuple.unit {
+                    let exp = eutuple.exponent
+                    unitExponents.remove(at: pos)
+                    unitExponents.insert((unit: unit, exponent: exp + exponent), at: pos)
+                    found = true
+                }
+                pos = pos + 1
+            }
+            if !found {
+                unitExponents.append((unit: unitEuTuple.unit, exponent: unitEuTuple.exponent * exponent))
+            }
+        }
+        unitExponents.sort(by: {$0.exponent > $1.exponent})
+    }
+    
+    internal func uniExponentsMultiply(unit: Unit, exponent: Double) {
+        for unitEuTuple in unit.unitExponents {
+            var found = false
+            var pos = 0
+            for eutuple in unitExponents {
+                if eutuple.unit == unitEuTuple.unit {
+                    let exp = eutuple.exponent
+                    unitExponents.remove(at: pos)
+                    unitExponents.insert((unit: unit, exponent: exp * exponent), at: pos)
+                    found = true
+                }
+                pos = pos + 1
+            }
+            if !found {
+                unitExponents.append((unit: unitEuTuple.unit, exponent: unitEuTuple.exponent * exponent))
+            }
+        }
+        unitExponents.sort(by: {$0.exponent > $1.exponent})
+    }
+    
+    // Changes 100.0 to 100 and 100.1233100001 to 100.12331
+    fileprivate static func findMultipleUsedInSymbol(factor: Double, from exponent: Int = 0) -> String {
+        let absFactor = fabs(factor)
+        let sign = factor < 0.0 ? "-" : ""
+        let exp1 : Double = pow(10.0, Double(exponent))
+        let diff = fabs(absFactor * exp1 - Double(Int(absFactor * exp1 + 0.5)))
+        if diff > 0.001 {
+            return "\(sign)\(findMultipleUsedInSymbol(factor: absFactor, from: exponent + 1))"
+        }
+        if exponent == 0 {
+            return "\(sign)\(Int(absFactor))"
+        }
+        return "\(sign)\(Double(Int(absFactor * exp1))/exp1)"
     }
     
     public func hash(into hasher: inout Hasher) {
@@ -107,9 +201,16 @@ public class EquivalentUnit : Unit {
     
     public let unit: Unit
     
+    public override var componentsForDisplay: [StringDisplayComponent] {
+        get {
+            return [StringDisplayComponent(type: .unitSymbol, displayString: self.symbol)]
+        }
+    }
+    
     public init(symbol: String, equivalent unit: Unit) {
         self.unit = unit
         super.init(symbol: symbol, baseUnit: unit.baseUnit, conversionFactor: unit.conversionFactor)
+        self.unitExponents = [(unit: self, exponent: 1)]
     }
 }
 
@@ -150,6 +251,16 @@ public class PrefixedUnit : Unit {
     public let prefix: Prefix
     public let unit: Unit
     
+    public override var componentsForDisplay: [StringDisplayComponent] {
+        get {
+            if self._symbol != nil {
+                return [StringDisplayComponent(type: .unitSymbol, displayString: self._symbol)]
+            }
+            return [StringDisplayComponent(type: .unitPrefix, displayString: prefix.symbol),
+                    StringDisplayComponent(type: .unitSymbol, displayString: unit.symbol)]
+        }
+    }
+    
     public convenience init(symbol: String? = nil, prefix: Prefix, unit: Unit) {
         self.init(symbol: symbol, prefix:prefix, unit:unit, isBaseUnit: false)
     }
@@ -157,17 +268,14 @@ public class PrefixedUnit : Unit {
     internal init(symbol: String? = nil, prefix: Prefix, unit: Unit, isBaseUnit: Bool) {
         self.prefix = prefix
         self.unit = unit
-        var sym = symbol
-        if sym == nil {
-            sym = "\(prefix.symbol)\(unit.symbol)"
-        }
-        super.init(symbol: sym!, baseUnit: unit.baseUnit, conversionFactor: unit.conversionFactor*prefix.factor, identifier: "[\(prefix.symbol)]\(unit.identifier)")
+        super.init(symbol: symbol, baseUnit: unit.baseUnit, conversionFactor: unit.conversionFactor*prefix.factor, identifier: "[\(prefix.symbol)]\(unit.identifier)")
         if isBaseUnit {
             self.isBaseUnit = true
             unit.isBaseUnit = false
             unit.baseUnit = self
             unit.conversionFactor = 1.0/prefix.factor
         }
+        self.unitExponents = [(unit: self, exponent: 1)]
     }
 }
 
@@ -175,29 +283,25 @@ public class UnitMultiple : Unit {
     
     public let factor: Double
     public let unit: Unit
+    private let _definedSymbol: String?
+    
+    public override var componentsForDisplay: [StringDisplayComponent] {
+        get {
+            if _definedSymbol != nil {
+                return super.componentsForDisplay
+            }
+            let prefix = UnitMultiple.findMultipleUsedInSymbol(factor: factor)
+            return [StringDisplayComponent(type: .unitPrefix, displayString: prefix),
+                    StringDisplayComponent(type: .unitSymbol, displayString: unit.symbol)]
+        }
+    }
     
     public init(symbol: String? = nil, factor: Double, unit: Unit) {
         self.factor = factor
         self.unit = unit
-        var unitSymbol = symbol
-        if unitSymbol == nil {
-            let prefix = UnitMultiple.findMultipleUsedInSymbol(factor: factor)
-            unitSymbol = "\(prefix)\(unit.symbol)"
-        }
-        super.init(symbol: unitSymbol!, baseUnit: unit.baseUnit, conversionFactor: unit.conversionFactor*factor, identifier: "[\(unitSymbol!)]\(unit.identifier)")
-    }
-    
-    // Changes 100.0 to 100 and 100.1233100001 to 100.12331
-    private static func findMultipleUsedInSymbol(factor: Double, from exponent: Int = 0) -> String {
-        let exp1 : Double = pow(10.0, Double(exponent))
-        let diff = fabs(factor * exp1 - Double(Int(factor * exp1 + 0.5)))
-        if diff > 0.001 {
-            return findMultipleUsedInSymbol(factor: factor, from: exponent + 1)
-        }
-        if exponent == 0 {
-            return "\(Int(factor))"
-        }
-        return "\(Double(Int(factor * exp1))/exp1)"
+        self._definedSymbol = symbol
+        super.init(symbol: symbol, baseUnit: unit.baseUnit, conversionFactor: unit.conversionFactor*factor)
+        self.unitExponents = [(unit: self, exponent: 1)]
     }
 }
 
@@ -206,12 +310,28 @@ public class UnitMultiplication : Unit {
     public let multiplier : Unit
     public let multiplicand : Unit
     
+    public override var componentsForDisplay: [StringDisplayComponent] {
+        get {
+            var display = [StringDisplayComponent]()
+            for unitTuple in self.unitExponents {
+                display.append(StringDisplayComponent(type: .unitSymbol, displayString: unitTuple.unit.symbol))
+                let exponentStr = Unit.findMultipleUsedInSymbol(factor: unitTuple.exponent)
+                if exponentStr != "1" {
+                    display.append(StringDisplayComponent(type: .unitExponent, displayString: exponentStr, baseline: .sup))
+                }
+                if unitTuple != self.unitExponents.last! {
+                    display.append(StringDisplayComponent(type: .unitMultiplier))
+                }
+            }
+            return display
+        }
+    }
+    
     public init(multiplier: Unit, multiplicand: Unit) {
         self.multiplier = multiplier
         self.multiplicand = multiplicand
         let dimensions = multiplier.dimensions * multiplicand.dimensions
-        let symbol = "\(multiplier.symbol)·\(multiplicand.symbol)"
-        super.init(symbol: symbol, dimensions: dimensions, identifier: "\(multiplier.identifier) * \(multiplicand.identifier)")
+        super.init(symbol: nil, dimensions: dimensions, identifier: "\(multiplier.identifier) * \(multiplicand.identifier)")
         if multiplier.isBaseUnit && multiplicand.isBaseUnit {
             self.conversionFactor = 1.0
             self.baseUnit = self
@@ -220,6 +340,9 @@ public class UnitMultiplication : Unit {
             self.baseUnit = multiplier.baseUnit * multiplicand.baseUnit
         }
         self.combineBaseUnitsPerDimension()
+        self.unitExponents.removeAll()
+        self.uniExponentsAdd(unit: multiplier, exponent: 1)
+        self.uniExponentsAdd(unit: multiplicand, exponent: 1)
     }
     
     internal func combineBaseUnitsPerDimension() {
@@ -251,12 +374,28 @@ public class UnitDivision : Unit {
     public let numerator : Unit
     public let denominator : Unit
     
+    public override var componentsForDisplay: [StringDisplayComponent] {
+        get {
+            var display = [StringDisplayComponent]()
+            for unitTuple in self.unitExponents {
+                display.append(StringDisplayComponent(type: .unitSymbol, displayString: unitTuple.unit.symbol))
+                let exponentStr = Unit.findMultipleUsedInSymbol(factor: unitTuple.exponent)
+                if exponentStr != "1" {
+                    display.append(StringDisplayComponent(type: .unitExponent, displayString: exponentStr, baseline: .sup))
+                }
+                if unitTuple != self.unitExponents.last! {
+                    display.append(StringDisplayComponent(type: .unitMultiplier))
+                }
+            }
+            return display
+        }
+    }
+    
     public init(numerator: Unit, denominator: Unit) {
         self.numerator = numerator
         self.denominator = denominator
         let dimensions = numerator.dimensions / denominator.dimensions
-        let symbol = "\(numerator.symbol)/\(denominator.symbol)"
-        super.init(symbol: symbol, dimensions: dimensions, identifier: "\(numerator.identifier) / \(denominator.identifier)")
+        super.init(symbol: nil, dimensions: dimensions, identifier: "\(numerator.identifier) / \(denominator.identifier)")
         if numerator.isBaseUnit && denominator.isBaseUnit {
             self.conversionFactor = 1.0
             self.baseUnit = self
@@ -265,6 +404,9 @@ public class UnitDivision : Unit {
             self.baseUnit = numerator.baseUnit / denominator.baseUnit
         }
         self.combineBaseUnitsPerDimension()
+        self.unitExponents.removeAll()
+        self.uniExponentsAdd(unit: numerator, exponent: 1)
+        self.uniExponentsAdd(unit: denominator, exponent: -1)
     }
     
     internal func combineBaseUnitsPerDimension() {
@@ -296,12 +438,28 @@ public class UnitExponentiation : Unit {
     public let base : Unit
     public let exponent : Double
     
+    public override var componentsForDisplay: [StringDisplayComponent] {
+        get {
+            var display = [StringDisplayComponent]()
+            for unitTuple in self.unitExponents {
+                display.append(StringDisplayComponent(type: .unitSymbol, displayString: unitTuple.unit.symbol))
+                let exponentStr = Unit.findMultipleUsedInSymbol(factor: unitTuple.exponent)
+                if exponentStr != "1" {
+                    display.append(StringDisplayComponent(type: .unitExponent, displayString: exponentStr, baseline: .sup))
+                }
+                if unitTuple != self.unitExponents.last! {
+                    display.append(StringDisplayComponent(type: .unitMultiplier))
+                }
+            }
+            return display
+        }
+    }
+    
     public init(base: Unit, exponent: Double) {
         self.base = base
         self.exponent = exponent
         let dimensions = pow(base.dimensions, exponent)
-        let symbol = "\(base.symbol)^\(exponent)"
-        super.init(symbol: symbol, dimensions: dimensions, identifier: "\(base.identifier)^\(exponent)")
+        super.init(symbol: nil, dimensions: dimensions, identifier: "\(base.identifier)^\(exponent)")
         if base.isBaseUnit {
             self.conversionFactor = 1.0
             self.baseUnit = self
@@ -310,6 +468,8 @@ public class UnitExponentiation : Unit {
             self.baseUnit = base.baseUnit
         }
         self.combineBaseUnitsPerDimension()
+        self.unitExponents.removeAll()
+        self.uniExponentsMultiply(unit: base, exponent: exponent)
     }
     
     internal func combineBaseUnitsPerDimension() {
