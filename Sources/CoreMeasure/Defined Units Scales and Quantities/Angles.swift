@@ -81,7 +81,7 @@ public extension Unit {
 /// An angle is a measure of the angle of a rotation, the figure formed by two rays.
 ///
 /// Angles are dimensionless quantities and are often specified in radians or degrees.
-public class Angle: Quantity {
+open class Angle: Quantity {
     
     /// Creates a new angle with the specified value.
     ///
@@ -90,8 +90,9 @@ public class Angle: Quantity {
     /// Units like `.radians` or `.degrees` are used for angles.
     /// - Parameters:
     ///   - symbol: The symbol used for the angle quantity.
+    ///   - scalarValue: The value for the angle.
     ///   - error: The error.
-    ///   - value: The value for the angle.
+    ///   - unit: The unit used for the angle.
     /// - Throws: A ``UnitValidationError`` when the dimensions of the value do not
     /// correspond to the dimensions of the quantity.
     public override init(symbol: String? = nil, _ scalarValue: Double, error: Double? = nil, unit: Unit) throws {
@@ -112,7 +113,7 @@ public class Angle: Quantity {
 /// intersection between the prime meridian (of Greenwhich) and the equator.
 ///
 /// A latitude is always given between -90° (the North pole) and +90° (the South pole).
-public class Latitude: Angle, Ranged {
+open class Latitude: Angle, Ranged {
     
     /// The range (minimum and maximum value) of values allowed for the latitude.
     public let range : (min: Measure, max: Measure)
@@ -124,8 +125,9 @@ public class Latitude: Angle, Ranged {
     /// Units like `.radians` or `.degrees` are used for angles.
     /// - Parameters:
     ///   - symbol: The symbol used for the latitude quantity.
+    ///   - scalarValue: The value for the latitude.
     ///   - error: The error.
-    ///   - value: The value for the latitude.
+    ///   - unit: The unit used for the latitude.
     /// - Throws: A ``UnitValidationError`` when the dimensions of the value do not
     /// correspond to the dimensions of the quantity.
     public override init(symbol: String? = nil, _ scalarValue: Double, error: Double? = nil, unit: Unit) throws {
@@ -140,13 +142,13 @@ public class Latitude: Angle, Ranged {
     }
 }
 
-public class NormalisedAngle: Angle, Ranged {
+open class NormalisedAngle: Angle, Ranged {
     
     public let range : (min: Measure, max: Measure)
     
-    public init(symbol: String? = nil, _ scalarValue: Double,
-                         unit: Unit, error: Double? = nil,
-                         range: (min: Measure, max: Measure)=(min: try! Measure(0, unit:.degree), max: try! Measure(360, unit:.degree))) throws {
+    public init(symbol: String? = nil, _ scalarValue: Double, error: Double? = nil,
+                unit: Unit,
+                range: (min: Measure, max: Measure)=(min: try! Measure(0, unit:.degree), max: try! Measure(360, unit:.degree))) throws {
         if unit.dimensions != Unit.radian.dimensions {
             throw UnitValidationError.differentDimensionality
         }
@@ -174,5 +176,5 @@ public class NormalisedAngle: Angle, Ranged {
 /// intersection between the prime meridian (of Greenwhich) and the equator.
 ///
 /// A longitude is always given between 0° and 360° or between -180° (East) and 180° (West).
-public class Longitude: NormalisedAngle {
+open class Longitude: NormalisedAngle {
 }
