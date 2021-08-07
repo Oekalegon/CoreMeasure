@@ -19,7 +19,7 @@ final class MeasureTests: XCTestCase {
         XCTAssertNotNil(m2)
         XCTAssertEqual(m2!.scalarValue, 36, accuracy: 0.01)
         XCTAssertEqual(m2!.unit, km_h)
-        XCTAssertEqual(m2!.description, "36.0 km/h")
+        XCTAssertEqual(m2!.description, "36.0 km·h^-1")
     }
     
     func testSubunits() {
@@ -335,10 +335,16 @@ final class MeasureTests: XCTestCase {
         let m27 = try! Measure(122.2644444444+0.001/3600.0, error: 0.0011/3600.0,unit: .degreeArcminuteArcsecond)
         XCTAssertEqual(m27.description, "122° 15' 52\"001 ±1 mas")
         // "122° 15' 52"126000000
-        let m28 = try! Measure(122.2644444444+0.13/3600.0, error: 0.0000000000277777777778,unit: .degreeArcminuteArcsecond)
+        let m28 = try! Measure(122.2644444444444444+0.13/3600.0, error: 0.0000000000277777777778,unit: .degreeArcminuteArcsecond)
         XCTAssertEqual(m28.description, "122° 15' 52\"1300000 ±0.1 μas")
-        let m29 = try! Measure(122.2644444444+0.13/3600.0, error: 0.000000000277777777778,unit: .degreeArcminuteArcsecond)
+        let m29 = try! Measure(122.2644444444444444+0.13/3600.0, error: 0.000000000277777777778,unit: .degreeArcminuteArcsecond)
         XCTAssertEqual(m29.description, "122° 15' 52\"130000 ±1 μas")
+        let m30 = try! Measure(122.2644444444+0.13/3600.0, error: 0.00000000277777777778,unit: .degreeArcminuteArcsecond)
+        XCTAssertEqual(m30.description, "122° 15' 52\"13000 ±10 μas")
+        let m31 = try! Measure(122.2644444444+0.13/3600.0, error: 0.0000000277777777778,unit: .degreeArcminuteArcsecond)
+        XCTAssertEqual(m31.description, "122° 15' 52\"1300 ±100 μas")
+        let m32 = try! Measure(122.2644444444+0.13/3600.0, error: 0.000000277777777778,unit: .degreeArcminuteArcsecond)
+        XCTAssertEqual(m32.description, "122° 15' 52\"130 ±1 mas")
 
         let m26 = try! Measure(-34.516666, error: 0.01666666667, unit: .signDegreeArcminuteArcsecond)
         XCTAssertEqual(m26.description, "-34° 31' ±1'")

@@ -47,4 +47,18 @@ final class UnitTests: XCTestCase {
         let ly2pc = Unit.lightYear.conversionFactor / Unit.parsec.conversionFactor
         XCTAssertEqual(ly2pc, 0.306601, accuracy: 0.000001)
     }
+    
+    func testUnitExponents() {
+        XCTAssertEqual(Unit.degree.description, "°")
+        XCTAssertEqual(Unit.metre.description, "m")
+        XCTAssertEqual(Unit.squareMetre.description, "m^2")
+        let metreSquaredPerKilogram = UnitDivision(numerator: .squareMetre, denominator: .kilogram)
+        XCTAssertEqual(metreSquaredPerKilogram.description, "m^2·kg^-1")
+        let kelvinMetreSquaredPerKilogram = UnitMultiplication(multiplier: metreSquaredPerKilogram, multiplicand: .kelvin)
+        XCTAssertEqual(kelvinMetreSquaredPerKilogram.description, "m^2·K·kg^-1")
+        let kelvinMetreSquaredPerKilogramCubed = UnitExponentiation(base: kelvinMetreSquaredPerKilogram, exponent: 3)
+        XCTAssertEqual(kelvinMetreSquaredPerKilogramCubed.description, "m^6·K^3·kg^-3")
+        let pascalKelvinPerMetreSquaredPerKilogramCubed = UnitMultiplication(multiplier: .pascal, multiplicand: kelvinMetreSquaredPerKilogramCubed)
+        XCTAssertEqual(pascalKelvinPerMetreSquaredPerKilogramCubed.description, "m^6·K^3·Pa·kg^-3")
+    }
 }
