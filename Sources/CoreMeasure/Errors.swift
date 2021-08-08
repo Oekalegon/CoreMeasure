@@ -111,4 +111,6 @@ public enum QuantityValidationError: Error {
     /// the quantity is outside of that range, for instance when an latitude angle (``Latitude``) has a
     /// value of 120°, where the range of a latitude angle is defined to be [-90°, +90°].
     case outOfRange
+    
+    case illegalNominalOrOrdinalScale
 }

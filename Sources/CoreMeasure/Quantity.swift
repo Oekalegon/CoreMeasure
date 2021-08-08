@@ -14,6 +14,26 @@ open class Quantity : Measure {
     /// The symbol used fot the quantity, may be `nil`.
     public let symbol: String?
     
+    
+    /// Creates a copy of the ``Measure`` in a specific `Quantity`.
+    /// - Parameters:
+    ///   - symbol: An optional symbol used for the quantity.
+    ///   - measure: The measure to be copied in the quanity.
+    public init(symbol: String? = nil, measure: Measure) throws {
+        self.symbol = symbol
+        if measure.usesIntervalOrRatioScale {
+            if (measure.scale as? RatioScale) != nil {
+                try super.init(measure.scalarValue, error: measure.error, scale: measure.scale as! RatioScale)
+            } else {
+                try super.init(measure.scalarValue, error: measure.error, scale: measure.scale as! IntervalScale)
+            }
+        } else if measure.usesScale {
+            throw QuantityValidationError.illegalNominalOrOrdinalScale
+        } else {
+            try super.init(measure.scalarValue, error: measure.error, unit: measure.unit)
+        }
+    }
+    
     /// Creates a new `Quantity` with the specified scalar value and expessed in the specified
     /// unit.
     ///

@@ -83,6 +83,19 @@ public extension Unit {
 /// Angles are dimensionless quantities and are often specified in radians or degrees.
 open class Angle: Quantity {
     
+    /// Creates a copy of the ``Measure`` in a specific `Angle`.
+    /// - Parameters:
+    ///   - symbol: An optional symbol used for the angle.
+    ///   - measure: The measure to be copied in the angle.
+    /// - Throws: A ``UnitValidationError`` when the dimensions of the value do not
+    /// correspond to the dimensions of the quantity.
+    public override init(symbol: String? = nil, measure: Measure) throws {
+        if measure.unit.dimensions != Unit.radian.dimensions {
+            throw UnitValidationError.differentDimensionality
+        }
+        try super.init(symbol: symbol, measure: measure)
+    }
+    
     /// Creates a new angle with the specified value.
     ///
     /// This initialiser checks whether the dimensions of the (unit of the) value corresponds to the
