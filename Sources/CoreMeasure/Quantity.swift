@@ -77,6 +77,23 @@ open class Quantity : Measure {
         self.symbol = symbol
         try super.init(scalarValue, error:error, scale: scale)
     }
+    
+    /// Returns a quantity with the inverted scalar value.
+    /// - Parameter measure: The quantity to be inverted.
+    /// - Returns: The inverted value.
+    /// - Throws:ScaleValidationError when the quantity
+    /// contains a value in a ratio scale, for which a absolute zero is defined and, therefore, cannot have
+    /// a negative value.
+    public static prefix func - (measure: Quantity) throws -> Quantity {
+        if measure.usesIntervalOrRatioScale {
+            if (measure.scale as? IntervalScale) != nil {
+                return try Quantity(symbol: measure.symbol, -measure.scalarValue, error: measure.error, scale: measure.scale as! IntervalScale)
+            } else {
+                throw ScaleValidationError.negativeValuesNotAllowedInRatioScale
+            }
+        }
+        return try Quantity(symbol: measure.symbol, -measure.scalarValue, error: measure.error, unit: measure.unit)
+    }
 }
 
 /// Defines the methods for subclasses of ``Quantity`` whose values are limited to a specific range,

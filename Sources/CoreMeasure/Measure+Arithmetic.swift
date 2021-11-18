@@ -7,6 +7,31 @@
 
 import Foundation
 
+extension Measure {
+    
+    /// Returns a measure with the inverted scalar value.
+    /// - Parameter measure: The measure to be inverted.
+    /// - Returns: The inverted value.
+    /// - Throws:ScaleValidationError when the measure contains a value in a nominal or ordinal scale,
+    /// which do not have associated values that have a known degree of variation, or when the measure
+    /// contains a value in a ratio scale, for which a absolute zero is defined and, therefore, cannot have
+    /// a negative value.
+    public static prefix func - (measure: Measure) throws -> Measure {
+        if measure.usesScale {
+            if measure.usesIntervalOrRatioScale {
+                if (measure.scale as? IntervalScale) != nil {
+                    return try Measure(-measure.scalarValue, error: measure.error, scale: measure.scale as! IntervalScale)
+                } else {
+                    throw ScaleValidationError.negativeValuesNotAllowedInRatioScale
+                }
+            } else {
+                throw ScaleValidationError.cannotUseArithmeticOnNominalOrOrdinalScale
+            }
+        }
+        return try Measure(-measure.scalarValue, error: measure.error, unit: measure.unit)
+    }
+}
+
 
 // MARK: Basic Arithmetic with Measures
 

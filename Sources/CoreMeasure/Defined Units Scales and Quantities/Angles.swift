@@ -114,6 +114,16 @@ open class Angle: Quantity {
         }
         try super.init(symbol: symbol, scalarValue, error:error, unit: unit)
     }
+    
+    /// Returns an angle with the inverted scalar value.
+    /// - Parameter measure: The angle to be inverted.
+    /// - Returns: The inverted value.
+    /// - Throws:ScaleValidationError when the angle
+    /// contains a value in a ratio scale, for which a absolute zero is defined and, therefore, cannot have
+    /// a negative value.
+    public static prefix func - (measure: Angle) throws -> Angle {
+        return try Angle(symbol: measure.symbol, -measure.scalarValue, error: measure.error, unit: measure.unit)
+    }
 }
 
 
@@ -153,6 +163,16 @@ open class Latitude: Angle, Ranged {
             throw QuantityValidationError.outOfRange
         }
     }
+    
+    /// Returns an angle with the inverted scalar value.
+    /// - Parameter measure: The angle to be inverted.
+    /// - Returns: The inverted value.
+    /// - Throws:ScaleValidationError when the angle
+    /// contains a value in a ratio scale, for which a absolute zero is defined and, therefore, cannot have
+    /// a negative value.
+    public static prefix func - (measure: Latitude) throws -> Latitude {
+        return try Latitude(symbol: measure.symbol, -measure.scalarValue, error: measure.error, unit: measure.unit)
+    }
 }
 
 open class NormalisedAngle: Angle, Ranged {
@@ -168,7 +188,7 @@ open class NormalisedAngle: Angle, Ranged {
         let setrange = (min: try range.min.convert(to: .degree), max: try range.max.convert(to: .degree))
         let tempMeasure = try Measure(scalarValue, unit: unit).convert(to: .degree)
         var convertedScalarValue = tempMeasure.scalarValue
-        if tempMeasure < setrange.min || tempMeasure > setrange.max {
+        if tempMeasure < setrange.min || tempMeasure >= setrange.max {
             convertedScalarValue = tempMeasure.scalarValue.truncatingRemainder(dividingBy: 360.0)
             if convertedScalarValue < 0 {
                 convertedScalarValue = convertedScalarValue + 360.0
@@ -190,4 +210,22 @@ open class NormalisedAngle: Angle, Ranged {
 ///
 /// A longitude is always given between 0° and 360° or between -180° (East) and 180° (West).
 open class Longitude: NormalisedAngle {
+    
+    public init(symbol: String? = nil, _ scalarValue: Double, error: Double? = nil, unit: Unit) throws {
+        try super.init(symbol: symbol, scalarValue, error: error, unit: unit)
+    }
+    
+    public init(symbol: String? = nil, measure: Measure) throws {
+        try super.init(measure.scalarValue, error: measure.error, unit: measure.unit)
+    }
+    
+    /// Returns an angle with the inverted scalar value.
+    /// - Parameter measure: The angle to be inverted.
+    /// - Returns: The inverted value.
+    /// - Throws:ScaleValidationError when the angle
+    /// contains a value in a ratio scale, for which a absolute zero is defined and, therefore, cannot have
+    /// a negative value.
+    public static prefix func - (measure: Longitude) throws -> Longitude {
+        return try Longitude(symbol: measure.symbol, -measure.scalarValue, error: measure.error, unit: measure.unit)
+    }
 }
