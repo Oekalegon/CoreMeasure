@@ -141,6 +141,14 @@ open class Latitude: Angle, Ranged {
     /// The range (minimum and maximum value) of values allowed for the latitude.
     public let range : (min: Measure, max: Measure)
     
+    public convenience init(angle: Angle) {
+        try! self.init(symbol: angle.symbol, angle.scalarValue, error: angle.error, unit: angle.unit)
+    }
+    
+    public convenience override init(symbol: String? = nil, measure: Measure) throws {
+        try self.init(symbol: symbol, measure.scalarValue, error: measure.scalarValue, unit: measure.unit)
+    }
+    
     /// Creates a new latitude with the specified value.
     ///
     /// This initialiser checks whether the dimensions of the (unit of the) value corresponds to the
@@ -179,6 +187,16 @@ open class NormalisedAngle: Angle, Ranged {
     
     public let range : (min: Measure, max: Measure)
     
+    public convenience init(angle: Angle,
+                range: (min: Measure, max: Measure)=(min: try! Measure(0, unit:.degree), max: try! Measure(360, unit:.degree))) {
+        try! self.init(symbol: angle.symbol, angle.scalarValue, error: angle.error, unit: angle.unit, range:range)
+    }
+    
+    public convenience init(symbol: String? = nil, measure: Measure,
+                range: (min: Measure, max: Measure)=(min: try! Measure(0, unit:.degree), max: try! Measure(360, unit:.degree))) throws {
+        try self.init(symbol: symbol, measure.scalarValue, error: measure.error, unit: measure.unit, range: range)
+    }
+    
     public init(symbol: String? = nil, _ scalarValue: Double, error: Double? = nil,
                 unit: Unit,
                 range: (min: Measure, max: Measure)=(min: try! Measure(0, unit:.degree), max: try! Measure(360, unit:.degree))) throws {
@@ -211,12 +229,16 @@ open class NormalisedAngle: Angle, Ranged {
 /// A longitude is always given between 0° and 360° or between -180° (East) and 180° (West).
 open class Longitude: NormalisedAngle {
     
-    public init(symbol: String? = nil, _ scalarValue: Double, error: Double? = nil, unit: Unit) throws {
-        try super.init(symbol: symbol, scalarValue, error: error, unit: unit)
+    public convenience init(angle: Angle) {
+        try! self.init(symbol: angle.symbol, angle.scalarValue, error: angle.error, unit: angle.unit)
     }
     
-    public init(symbol: String? = nil, measure: Measure) throws {
-        try super.init(measure.scalarValue, error: measure.error, unit: measure.unit)
+    public convenience init(symbol: String? = nil, measure: Measure) throws {
+        try self.init(symbol: symbol, measure.scalarValue, error: measure.error, unit: measure.unit)
+    }
+    
+    public init(symbol: String? = nil, _ scalarValue: Double, error: Double? = nil, unit: Unit) throws {
+        try super.init(symbol: symbol, scalarValue, error: error, unit: unit)
     }
     
     /// Returns an angle with the inverted scalar value.

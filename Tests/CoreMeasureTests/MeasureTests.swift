@@ -349,4 +349,26 @@ final class MeasureTests: XCTestCase {
         let m26 = try! Measure(-34.516666, error: 0.01666666667, unit: .signDegreeArcminuteArcsecond)
         XCTAssertEqual(m26.description, "-34° 31' ±1'")
     }
+    
+    func testHaversine() throws {
+        let angle = try! Angle(0.001, unit: .degree)
+        let havValue = hav(angle)
+        let havAngle = ahav(havValue)
+        XCTAssertEqual(angle.scalarValue, try havAngle.convert(to: .degree).scalarValue, accuracy: 0.0000001)
+
+        let angle2 = try! Angle(89.9921, unit: .degree)
+        let havValue2 = hav(angle2)
+        let havAngle2 = ahav(havValue2)
+        XCTAssertEqual(angle2.scalarValue, try havAngle2.convert(to: .degree).scalarValue, accuracy: 0.0000001)
+
+        let angle3 = try! Angle(179.9832, unit: .degree)
+        let havValue3 = hav(angle3)
+        let havAngle3 = ahav(havValue3)
+        XCTAssertEqual(angle3.scalarValue, try havAngle3.convert(to: .degree).scalarValue, accuracy: 0.0000001)
+        
+        let angle4 = try! Angle(-54.34532, unit: .degree)
+        let havValue4 = hav(angle4)
+        let havAngle4 = ahav(havValue4)
+        XCTAssertEqual(-angle4.scalarValue, try havAngle4.convert(to: .degree).scalarValue, accuracy: 0.0000001)
+    }
 }

@@ -404,3 +404,43 @@ public func atan(_ numerator: Measure, _ denominator: Measure) throws -> Angle {
     }
     return try! Angle(atan2(numerator.scalarValue, denominator.scalarValue), unit: .radian)
 }
+
+/// Returns the haversine of the specified angle. The angle should be in radians or one of its derived unit, such
+/// as degrees, or arcseconds.
+///
+/// The result is a ``Measure`` with as unit the dimensionless unit `.one`.
+/// - Parameter value: The angle.
+/// - Returns: The haversine of the angle.
+public func hav(_ value: Angle) -> Measure {
+    let valueInRadians = (try! value.convert(to: .radian)).scalarValue
+    let remainder = fabs(valueInRadians.truncatingRemainder(dividingBy: Double.pi))
+    let split = 0.25*Double.pi
+    if fabs(remainder) < split || fabs(remainder-Double.pi) < split {
+        // Angle is closer to 0 or 180 degrees -> Use sin version as cos varies little near an angle of 0 or 180
+        let hav = pow(sin(valueInRadians/2),2)
+        return try! Measure(hav, unit: .one)
+    } else {
+        // Angle is closer to 90 or 270 degrees -> Use cos version as sin varies little near an angle of 0 or 180
+        let hav = (1-cos(valueInRadians))/2
+        return try! Measure(hav, unit: .one)
+    }
+}
+
+/// Returns the archaversine (inverse haversine) of the argument as an  ``Angle`` in the range [0, 2π].
+///
+/// If the argument value is greater than `1.0` or smaller than `-1.0`, the `scalarValue` of the result
+/// ``Measure`` will be equal to `Double.nan`.
+///
+/// The argument should be a dimensionless quantity but for ease of use dimensionfull arguments are
+/// allowed as if the argument is devided by the unit of the quantiy,
+/// e.g. ahav(10 km) = ahav(10 km / 1 km) = ahav(10).
+/// - Parameter value: The argument to the archaversine.
+/// - Returns: The angle which is the result of taking the archaversine of the argument.
+public func ahav(_ value: Measure) -> Angle {
+    let sinAngle = sqrt(value.scalarValue)
+    if sinAngle < 0.1 {
+        // Small angle approximation
+        return try! Angle(sinAngle * 2, unit: .radian)
+    }
+    return try! Angle(asin(sinAngle) * 2, unit: .radian)
+}
