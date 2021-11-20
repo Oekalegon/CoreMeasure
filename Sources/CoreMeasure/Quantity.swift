@@ -44,7 +44,7 @@ open class Quantity : Measure {
     ///   - unit: The unit in which the scalar value is expressed.
     /// - Throws: ``UnitValidationError`` or ``ScaleValidationError`` when the
     /// associated unit or scale is incompatible with the quantity or its value.
-    public init(symbol: String? = nil, _ scalarValue: Double, error: Double? = nil, unit: Unit) throws {
+    public init(symbol: String? = nil, _ scalarValue: Double, error: Double? = nil, unit: OMUnit) throws {
         self.symbol = symbol
         try super.init(scalarValue, error:error, unit: unit)
     }

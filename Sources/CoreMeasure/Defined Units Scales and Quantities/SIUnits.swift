@@ -7,21 +7,21 @@
 
 import Foundation
 
-public extension Unit {
+public extension OMUnit {
     
-    static let one = Unit(symbol: "")
+    static let one = OMUnit(symbol: "")
     
     // MARK: SI Base units
-    static let second = Unit(symbol: "s", dimension: .T)
-    static let metre = Unit(symbol: "m", dimension: .L)
+    static let second = OMUnit(symbol: "s", dimension: .T)
+    static let metre = OMUnit(symbol: "m", dimension: .L)
     static let kilogram = PrefixedUnit(prefix: .kilo, unit: .gram, isBaseUnit: true)
-    static let kelvin = Unit(symbol: "K", dimension: .θ)
-    static let mol = Unit(symbol: "mol", dimension: .N)
-    static let ampere = Unit(symbol: "A", dimension: .I)
-    static let candela = Unit(symbol: "cd", dimension: .J)
+    static let kelvin = OMUnit(symbol: "K", dimension: .θ)
+    static let mol = OMUnit(symbol: "mol", dimension: .N)
+    static let ampere = OMUnit(symbol: "A", dimension: .I)
+    static let candela = OMUnit(symbol: "cd", dimension: .J)
     
     // MARK: SI Prefixed units
-    static let gram = Unit(symbol: "g", dimension: .M)
+    static let gram = OMUnit(symbol: "g", dimension: .M)
     
     // MARK: SI Derived Units with Special names
     static let hertz = EquivalentUnit(symbol: "Hz", equivalent: .perSecond)

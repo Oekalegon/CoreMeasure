@@ -7,7 +7,7 @@
 
 import Foundation
 
-public extension Unit {
+public extension OMUnit {
     
     static let parsec = UnitMultiple(symbol: "pc", factor: 30856775714409184.00, unit: metre)
     static let kiloparsec = PrefixedUnit(prefix: .kilo, unit: .parsec)
