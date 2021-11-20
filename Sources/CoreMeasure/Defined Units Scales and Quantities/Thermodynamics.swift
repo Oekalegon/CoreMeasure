@@ -7,7 +7,7 @@
 
 import Foundation
 
-public extension Unit {
+public extension OMUnit {
     
     // MARK: Units
     static let degreesFahrenheit = UnitMultiple(symbol: "°F", factor: 5.0/9.0, unit: .kelvin)

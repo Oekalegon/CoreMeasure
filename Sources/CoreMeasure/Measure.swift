@@ -47,7 +47,7 @@ open class Measure : CustomStringConvertible,
     private let labelInScale: String?
     
     /// The unit in which the value of the measure is expressed.
-    public let unit: Unit
+    public let unit: OMUnit
     
     /// The scale along which the value of the measure is expressed.
     public let scale: Scale?
@@ -86,7 +86,7 @@ open class Measure : CustomStringConvertible,
     ///    - scalarValue: The scalar value of the `Measure`
     ///    - error: The error on the scalar value: Set to `nil` if the error is not known.
     ///    - unit: The unit in which the scalar value is expressed.
-    public init(_ scalarValue: Double, error: Double? = nil, unit: Unit) throws {
+    public init(_ scalarValue: Double, error: Double? = nil, unit: OMUnit) throws {
         self.scalarValue = scalarValue
         if error != nil && error! <= 0 {
             throw MeasureValidationError.nonPositiveError
@@ -205,7 +205,7 @@ open class Measure : CustomStringConvertible,
     ///     A ``ScaleValidationError`` when the receiver is defined on a scale and, therefore,
     ///     can only be converted to another scale.
     /// - Returns: A new new measure with the value converted to the specified unit.
-    public func convert(to unit: Unit) throws -> Measure {
+    public func convert(to unit: OMUnit) throws -> Measure {
         if self.unit.dimensions != unit.dimensions {
             throw UnitValidationError.differentDimensionality
         }
@@ -370,7 +370,7 @@ open class Measure : CustomStringConvertible,
                     error = (try! Measure(1.0, unit: compoundUnit.partialUnits.last!).convert(to: self.unit)).scalarValue
                 }
                 value = round(1/error * value) * error // Rounding to the error
-                var previousUnit : Unit? = nil
+                var previousUnit : OMUnit? = nil
                 for componentUnit in compoundUnit.partialUnits {
                     var tempmes = try! Measure(value, error: error, unit: self.unit)
                     tempmes = try! tempmes.convert(to: componentUnit)
@@ -490,7 +490,7 @@ open class Measure : CustomStringConvertible,
         }
     }
     
-    private static func unitComponentForDisplay(unit: Unit) -> [StringDisplayComponent] {
+    private static func unitComponentForDisplay(unit: OMUnit) -> [StringDisplayComponent] {
         var display = [StringDisplayComponent]()
         if unit != .degree && unit != .arcminute && unit != .arcsecond && unit != .angleHour && unit != .angleMinute && unit != .angleSecond {
             display.append(StringDisplayComponent(type: .space))

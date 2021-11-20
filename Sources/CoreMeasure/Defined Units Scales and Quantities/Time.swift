@@ -7,7 +7,7 @@
 
 import Foundation
 
-public extension Unit {
+public extension OMUnit {
     
     static let hour = UnitMultiple(symbol: "h", factor: 3600.0, unit: .second)
     static let minute = UnitMultiple(symbol: "m", factor: 60.0, unit: .second)

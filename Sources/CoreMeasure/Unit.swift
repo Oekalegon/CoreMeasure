@@ -7,7 +7,7 @@
 
 import Foundation
 
-public class Unit : Equatable, Hashable,
+public class OMUnit : Equatable, Hashable,
                     StringDisplayComponentsProvider,
                     CustomStringConvertible{
     
@@ -25,8 +25,8 @@ public class Unit : Equatable, Hashable,
     fileprivate let _symbol: String?
     public let dimensions: Dimensions
     public fileprivate(set) var isBaseUnit: Bool = false
-    private var _baseUnit: Unit?
-    public fileprivate(set) var baseUnit : Unit {
+    private var _baseUnit: OMUnit?
+    public fileprivate(set) var baseUnit : OMUnit {
         get {
             if _baseUnit == nil {
                 return self
@@ -63,9 +63,9 @@ public class Unit : Equatable, Hashable,
         }
     }
     
-    internal var unitExponents: [(unit: Unit, exponent: Double)] = [(unit: Unit, exponent: Double)]()
+    internal var unitExponents: [(unit: OMUnit, exponent: Double)] = [(unit: OMUnit, exponent: Double)]()
     
-    internal var baseUnitsPerDimension = [Dimension: [Unit: Double]]()
+    internal var baseUnitsPerDimension = [Dimension: [OMUnit: Double]]()
     
     public convenience init(symbol: String) {
         let dimensions = Dimensions()
@@ -82,7 +82,7 @@ public class Unit : Equatable, Hashable,
         self.unitExponents = [(unit: self, exponent: 1)]
     }
     
-    fileprivate init(symbol: String?, baseUnit: Unit, conversionFactor: Double = 1.0, identifier: String = UUID().uuidString) {
+    fileprivate init(symbol: String?, baseUnit: OMUnit, conversionFactor: Double = 1.0, identifier: String = UUID().uuidString) {
         self.identifier = identifier
         self._baseUnit = baseUnit.baseUnit
         self.conversionFactor = conversionFactor
@@ -102,7 +102,7 @@ public class Unit : Equatable, Hashable,
         self.unitExponents = [(unit: self, exponent: 1)]
     }
     
-    internal func uniExponentsAdd(unit: Unit, exponent: Double) {
+    internal func uniExponentsAdd(unit: OMUnit, exponent: Double) {
         for unitEuTuple in unit.unitExponents {
             var found = false
             var pos = 0
@@ -122,7 +122,7 @@ public class Unit : Equatable, Hashable,
         unitExponents.sort(by: {$0.exponent > $1.exponent})
     }
     
-    internal func uniExponentsMultiply(unit: Unit, exponent: Double) {
+    internal func uniExponentsMultiply(unit: OMUnit, exponent: Double) {
         for unitEuTuple in unit.unitExponents {
             var found = false
             var pos = 0
@@ -161,7 +161,7 @@ public class Unit : Equatable, Hashable,
         hasher.combine(identifier)
     }
     
-    public static func == (lhs: Unit, rhs: Unit) -> Bool {
+    public static func == (lhs: OMUnit, rhs: OMUnit) -> Bool {
         if lhs.identifier == rhs.identifier {
             return true
         }
@@ -175,10 +175,10 @@ public class Unit : Equatable, Hashable,
             var unitsInDimLHS = lhs.baseUnitsPerDimension[dim]
             var unitsInDimRHS = rhs.baseUnitsPerDimension[dim]
             if unitsInDimLHS == nil {
-                unitsInDimLHS = [Unit: Double]()
+                unitsInDimLHS = [OMUnit: Double]()
             }
             if unitsInDimRHS == nil {
-                unitsInDimRHS = [Unit: Double]()
+                unitsInDimRHS = [OMUnit: Double]()
             }
             for (unit, exponent) in unitsInDimLHS! {
                 let exp2 = unitsInDimRHS![unit]
@@ -197,9 +197,9 @@ public class Unit : Equatable, Hashable,
     }
 }
 
-public class EquivalentUnit : Unit {
+public class EquivalentUnit : OMUnit {
     
-    public let unit: Unit
+    public let unit: OMUnit
     
     public override var componentsForDisplay: [StringDisplayComponent] {
         get {
@@ -207,7 +207,7 @@ public class EquivalentUnit : Unit {
         }
     }
     
-    public init(symbol: String, equivalent unit: Unit) {
+    public init(symbol: String, equivalent unit: OMUnit) {
         self.unit = unit
         super.init(symbol: symbol, baseUnit: unit.baseUnit, conversionFactor: unit.conversionFactor)
         self.unitExponents = [(unit: self, exponent: 1)]
@@ -246,10 +246,10 @@ public struct Prefix {
     }
 }
 
-public class PrefixedUnit : Unit {
+public class PrefixedUnit : OMUnit {
     
     public let prefix: Prefix
-    public let unit: Unit
+    public let unit: OMUnit
     
     public override var componentsForDisplay: [StringDisplayComponent] {
         get {
@@ -261,11 +261,11 @@ public class PrefixedUnit : Unit {
         }
     }
     
-    public convenience init(symbol: String? = nil, prefix: Prefix, unit: Unit) {
+    public convenience init(symbol: String? = nil, prefix: Prefix, unit: OMUnit) {
         self.init(symbol: symbol, prefix:prefix, unit:unit, isBaseUnit: false)
     }
     
-    internal init(symbol: String? = nil, prefix: Prefix, unit: Unit, isBaseUnit: Bool) {
+    internal init(symbol: String? = nil, prefix: Prefix, unit: OMUnit, isBaseUnit: Bool) {
         self.prefix = prefix
         self.unit = unit
         super.init(symbol: symbol, baseUnit: unit.baseUnit, conversionFactor: unit.conversionFactor*prefix.factor, identifier: "[\(prefix.symbol)]\(unit.identifier)")
@@ -279,10 +279,10 @@ public class PrefixedUnit : Unit {
     }
 }
 
-public class UnitMultiple : Unit {
+public class UnitMultiple : OMUnit {
     
     public let factor: Double
-    public let unit: Unit
+    public let unit: OMUnit
     private let _definedSymbol: String?
     
     public override var componentsForDisplay: [StringDisplayComponent] {
@@ -296,7 +296,7 @@ public class UnitMultiple : Unit {
         }
     }
     
-    public init(symbol: String? = nil, factor: Double, unit: Unit) {
+    public init(symbol: String? = nil, factor: Double, unit: OMUnit) {
         self.factor = factor
         self.unit = unit
         self._definedSymbol = symbol
@@ -305,17 +305,17 @@ public class UnitMultiple : Unit {
     }
 }
 
-public class UnitMultiplication : Unit {
+public class UnitMultiplication : OMUnit {
     
-    public let multiplier : Unit
-    public let multiplicand : Unit
+    public let multiplier : OMUnit
+    public let multiplicand : OMUnit
     
     public override var componentsForDisplay: [StringDisplayComponent] {
         get {
             var display = [StringDisplayComponent]()
             for unitTuple in self.unitExponents {
                 display.append(StringDisplayComponent(type: .unitSymbol, displayString: unitTuple.unit.symbol))
-                let exponentStr = Unit.findMultipleUsedInSymbol(factor: unitTuple.exponent)
+                let exponentStr = OMUnit.findMultipleUsedInSymbol(factor: unitTuple.exponent)
                 if exponentStr != "1" {
                     display.append(StringDisplayComponent(type: .unitExponent, displayString: exponentStr, baseline: .sup))
                 }
@@ -327,7 +327,7 @@ public class UnitMultiplication : Unit {
         }
     }
     
-    public init(multiplier: Unit, multiplicand: Unit) {
+    public init(multiplier: OMUnit, multiplicand: OMUnit) {
         self.multiplier = multiplier
         self.multiplicand = multiplicand
         let dimensions = multiplier.dimensions * multiplicand.dimensions
@@ -346,11 +346,11 @@ public class UnitMultiplication : Unit {
     }
     
     internal func combineBaseUnitsPerDimension() {
-        var bupds = [Dimension: [Unit: Double]] ()
+        var bupds = [Dimension: [OMUnit: Double]] ()
         for dim in Dimension.allCases {
             let unitExps1 = multiplier.baseUnitsPerDimension[dim]
             let unitExps2 = multiplicand.baseUnitsPerDimension[dim]
-            var unitExps = [Unit: Double]()
+            var unitExps = [OMUnit: Double]()
             if unitExps1 != nil {
                 for (unit, exponent) in unitExps1! {
                     let existingExponent = unitExps[unit] ?? 0
@@ -369,17 +369,17 @@ public class UnitMultiplication : Unit {
     }
 }
 
-public class UnitDivision : Unit {
+public class UnitDivision : OMUnit {
     
-    public let numerator : Unit
-    public let denominator : Unit
+    public let numerator : OMUnit
+    public let denominator : OMUnit
     
     public override var componentsForDisplay: [StringDisplayComponent] {
         get {
             var display = [StringDisplayComponent]()
             for unitTuple in self.unitExponents {
                 display.append(StringDisplayComponent(type: .unitSymbol, displayString: unitTuple.unit.symbol))
-                let exponentStr = Unit.findMultipleUsedInSymbol(factor: unitTuple.exponent)
+                let exponentStr = OMUnit.findMultipleUsedInSymbol(factor: unitTuple.exponent)
                 if exponentStr != "1" {
                     display.append(StringDisplayComponent(type: .unitExponent, displayString: exponentStr, baseline: .sup))
                 }
@@ -391,7 +391,7 @@ public class UnitDivision : Unit {
         }
     }
     
-    public init(numerator: Unit, denominator: Unit) {
+    public init(numerator: OMUnit, denominator: OMUnit) {
         self.numerator = numerator
         self.denominator = denominator
         let dimensions = numerator.dimensions / denominator.dimensions
@@ -410,11 +410,11 @@ public class UnitDivision : Unit {
     }
     
     internal func combineBaseUnitsPerDimension() {
-        var bupds = [Dimension: [Unit: Double]] ()
+        var bupds = [Dimension: [OMUnit: Double]] ()
         for dim in Dimension.allCases {
             let unitExps1 = numerator.baseUnitsPerDimension[dim]
             let unitExps2 = denominator.baseUnitsPerDimension[dim]
-            var unitExps = [Unit: Double]()
+            var unitExps = [OMUnit: Double]()
             if unitExps1 != nil {
                 for (unit, exponent) in unitExps1! {
                     let existingExponent = unitExps[unit] ?? 0
@@ -433,9 +433,9 @@ public class UnitDivision : Unit {
     }
 }
 
-public class UnitExponentiation : Unit {
+public class UnitExponentiation : OMUnit {
     
-    public let base : Unit
+    public let base : OMUnit
     public let exponent : Double
     
     public override var componentsForDisplay: [StringDisplayComponent] {
@@ -443,7 +443,7 @@ public class UnitExponentiation : Unit {
             var display = [StringDisplayComponent]()
             for unitTuple in self.unitExponents {
                 display.append(StringDisplayComponent(type: .unitSymbol, displayString: unitTuple.unit.symbol))
-                let exponentStr = Unit.findMultipleUsedInSymbol(factor: unitTuple.exponent)
+                let exponentStr = OMUnit.findMultipleUsedInSymbol(factor: unitTuple.exponent)
                 if exponentStr != "1" {
                     display.append(StringDisplayComponent(type: .unitExponent, displayString: exponentStr, baseline: .sup))
                 }
@@ -455,7 +455,7 @@ public class UnitExponentiation : Unit {
         }
     }
     
-    public init(base: Unit, exponent: Double) {
+    public init(base: OMUnit, exponent: Double) {
         self.base = base
         self.exponent = exponent
         let dimensions = pow(base.dimensions, exponent)
@@ -473,10 +473,10 @@ public class UnitExponentiation : Unit {
     }
     
     internal func combineBaseUnitsPerDimension() {
-        var bupds = [Dimension: [Unit: Double]] ()
+        var bupds = [Dimension: [OMUnit: Double]] ()
         for dim in Dimension.allCases {
             let unitExps1 = base.baseUnitsPerDimension[dim]
-            var unitExps = [Unit: Double]()
+            var unitExps = [OMUnit: Double]()
             if unitExps1 != nil {
                 for (unit, exponent) in unitExps1! {
                     unitExps[unit] = exponent * self.exponent
@@ -489,20 +489,20 @@ public class UnitExponentiation : Unit {
 }
 
 
-public class CompoundUnit : Unit {
+public class CompoundUnit : OMUnit {
     
     /// An array containing the subunits in which the value is represented.
     ///
     /// The order should be (and is checked to be so) from larger units to smaller units. For instance,
     /// in the case of angles, the order should be degree, arcminute, arcsecond.
-    public let partialUnits: [Unit]
+    public let partialUnits: [OMUnit]
     
     /// An array containing the units in which the *error* of the value is represented.
     ///
     /// The order should be (and is checked to be so) from larger units to smaller units. For instance,
     /// in the case of angles, the order should be degree, arcminute, arcsecond, milliarcsecond,
     /// microarcsecond.
-    public let errorUnits: [Unit]
+    public let errorUnits: [OMUnit]
     
     /// A flag determining whether the sign symbol should always be prepended to the string description
     /// of the angle.
@@ -532,14 +532,14 @@ public class CompoundUnit : Unit {
     /// - Throws: A UnitValidationError is thrown when the `partialUnits` parameter did not
     /// contain any subunits, when the subunits did not have the same dimensions, or when smaller units
     /// were added before larger units (e.g. inches before feet).
-    public init(consistingOf partialUnits: [Unit], extraErrorUnits: [Unit] = [], displaySign: Bool = false) throws {
+    public init(consistingOf partialUnits: [OMUnit], extraErrorUnits: [OMUnit] = [], displaySign: Bool = false) throws {
         self.partialUnits = partialUnits
         self.displaySign = displaySign
         if partialUnits.count < 1 {
             throw UnitValidationError.noPartialUnitsDefined
         }
         try CompoundUnit.testUnitOrder(partialUnits: partialUnits)
-        var tempar = [Unit]()
+        var tempar = [OMUnit]()
         tempar.append(contentsOf: partialUnits)
         tempar.append(contentsOf: extraErrorUnits)
         self.errorUnits = tempar
@@ -548,8 +548,8 @@ public class CompoundUnit : Unit {
     }
     
     // Test whether the units are ordered from large to small.
-    private static func testUnitOrder(partialUnits: [Unit]) throws {
-        let primaryUnit : Unit = partialUnits.first!
+    private static func testUnitOrder(partialUnits: [OMUnit]) throws {
+        let primaryUnit : OMUnit = partialUnits.first!
         let testMeasure = try! Measure(1.0, unit: primaryUnit)
         for (index, partialUnit) in partialUnits.enumerated() {
             if index > 0 {
@@ -566,29 +566,29 @@ public class CompoundUnit : Unit {
 
 // MARK: Operators on Units
 
-public func +(lhs: Unit, rhs: Unit) throws -> Unit {
+public func +(lhs: OMUnit, rhs: OMUnit) throws -> OMUnit {
     if lhs.dimensions != rhs.dimensions {
         throw UnitValidationError.differentDimensionality
     }
     return lhs
 }
 
-public func -(lhs: Unit, rhs: Unit) throws -> Unit {
+public func -(lhs: OMUnit, rhs: OMUnit) throws -> OMUnit {
     if lhs.dimensions != rhs.dimensions {
         throw UnitValidationError.differentDimensionality
     }
     return lhs
 }
 
-public func *(lhs: Unit, rhs: Unit) -> Unit {
+public func *(lhs: OMUnit, rhs: OMUnit) -> OMUnit {
     return UnitMultiplication(multiplier: lhs, multiplicand: rhs)
 }
 
-public func /(lhs: Unit, rhs: Unit) -> Unit {
+public func /(lhs: OMUnit, rhs: OMUnit) -> OMUnit {
     return UnitDivision(numerator: lhs, denominator: rhs)
 }
 
-public func pow(base: Unit, exponent: Double) -> Unit {
+public func pow(base: OMUnit, exponent: Double) -> OMUnit {
     return UnitExponentiation(base: base, exponent: exponent)
 }
 

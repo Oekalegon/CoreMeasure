@@ -7,7 +7,7 @@
 
 import Foundation
 
-public extension Unit {
+public extension OMUnit {
     
     /// The degree is a unit for specifying angles where 1 degree (´1°´) equals 1/360th of a rotation.
     static let degree = UnitMultiple(symbol: "°", factor: .pi/180.0, unit: .radian)
@@ -90,7 +90,7 @@ open class Angle: Quantity {
     /// - Throws: A ``UnitValidationError`` when the dimensions of the value do not
     /// correspond to the dimensions of the quantity.
     public override init(symbol: String? = nil, measure: Measure) throws {
-        if measure.unit.dimensions != Unit.radian.dimensions {
+        if measure.unit.dimensions != OMUnit.radian.dimensions {
             throw UnitValidationError.differentDimensionality
         }
         try super.init(symbol: symbol, measure: measure)
@@ -108,8 +108,8 @@ open class Angle: Quantity {
     ///   - unit: The unit used for the angle.
     /// - Throws: A ``UnitValidationError`` when the dimensions of the value do not
     /// correspond to the dimensions of the quantity.
-    public override init(symbol: String? = nil, _ scalarValue: Double, error: Double? = nil, unit: Unit) throws {
-        if unit.dimensions != Unit.radian.dimensions {
+    public override init(symbol: String? = nil, _ scalarValue: Double, error: Double? = nil, unit: OMUnit) throws {
+        if unit.dimensions != OMUnit.radian.dimensions {
             throw UnitValidationError.differentDimensionality
         }
         try super.init(symbol: symbol, scalarValue, error:error, unit: unit)
@@ -161,8 +161,8 @@ open class Latitude: Angle, Ranged {
     ///   - unit: The unit used for the latitude.
     /// - Throws: A ``UnitValidationError`` when the dimensions of the value do not
     /// correspond to the dimensions of the quantity.
-    public override init(symbol: String? = nil, _ scalarValue: Double, error: Double? = nil, unit: Unit) throws {
-        if unit.dimensions != Unit.radian.dimensions {
+    public override init(symbol: String? = nil, _ scalarValue: Double, error: Double? = nil, unit: OMUnit) throws {
+        if unit.dimensions != OMUnit.radian.dimensions {
             throw UnitValidationError.differentDimensionality
         }
         self.range = (min: try! Measure(-90, unit:.degree), max: try! Measure(90, unit:.degree))
@@ -198,9 +198,9 @@ open class NormalisedAngle: Angle, Ranged {
     }
     
     public init(symbol: String? = nil, _ scalarValue: Double, error: Double? = nil,
-                unit: Unit,
+                unit: OMUnit,
                 range: (min: Measure, max: Measure)=(min: try! Measure(0, unit:.degree), max: try! Measure(360, unit:.degree))) throws {
-        if unit.dimensions != Unit.radian.dimensions {
+        if unit.dimensions != OMUnit.radian.dimensions {
             throw UnitValidationError.differentDimensionality
         }
         let setrange = (min: try range.min.convert(to: .degree), max: try range.max.convert(to: .degree))
@@ -237,7 +237,7 @@ open class Longitude: NormalisedAngle {
         try self.init(symbol: symbol, measure.scalarValue, error: measure.error, unit: measure.unit)
     }
     
-    public init(symbol: String? = nil, _ scalarValue: Double, error: Double? = nil, unit: Unit) throws {
+    public init(symbol: String? = nil, _ scalarValue: Double, error: Double? = nil, unit: OMUnit) throws {
         try super.init(symbol: symbol, scalarValue, error: error, unit: unit)
     }
     

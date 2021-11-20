@@ -122,7 +122,7 @@ public class IntervalScale: Scale {
     ///
     /// If the ``offset`` to a ratio scale is defined, the unit of the scale will be the same as the unit for
     /// the ``offset``.
-    public let unit: Unit
+    public let unit: OMUnit
     
     /// The dimensions in which this interval scale is defined.
     public var dimensions: Dimensions {
@@ -175,7 +175,7 @@ public class IntervalScale: Scale {
     ///   - symbol: The symbol to be used for the scale, may be `nil`.
     ///   - unit: The unit used in the scale.
     ///   - identifier: The identifier of the scale.
-    public init(symbol: String? = nil, unit: Unit, identifier: String = UUID().uuidString) {
+    public init(symbol: String? = nil, unit: OMUnit, identifier: String = UUID().uuidString) {
         self.ratioScale = nil
         self.offset = nil
         self.unit = unit
@@ -213,7 +213,7 @@ public class IntervalScale: Scale {
 public class RatioScale: Scale {
     
     /// The unit used in this ratio scale
-    public let unit: Unit
+    public let unit: OMUnit
     
     /// The dimension of the scale
     ///
@@ -235,7 +235,7 @@ public class RatioScale: Scale {
     ///   - symbol: The symbol to be used for the scale, may be `nil`.
     ///   - unit: The unit used in the scale.
     ///   - identifier: The identifier of the scale.
-    public init(symbol: String? = nil, with unit: Unit, identifier: String = UUID().uuidString) {
+    public init(symbol: String? = nil, with unit: OMUnit, identifier: String = UUID().uuidString) {
         self.unit = unit
         super.init(symbol: symbol ?? unit.symbol, identifier: identifier)
     }
