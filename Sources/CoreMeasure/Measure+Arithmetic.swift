@@ -245,9 +245,19 @@ public func pow(_ base: Double, _ exponent: Measure) -> Measure {
 /// - Parameter value: The measure whose square root is requested.
 /// - Returns: The square root of the measure.
 public func sqrt(_ value: Measure) -> Measure {
-    let unit = UnitExponentiation(base: value.unit, exponent: 0.5)
+    var unit: OMUnit?
+    if (value.unit as? UnitExponentiation) != nil {
+        let baseU = value.unit as! UnitExponentiation
+        if baseU.exponent == 2 {
+            unit = baseU.base
+        } else {
+            unit = UnitExponentiation(base: baseU.base, exponent: baseU.exponent/2.0)
+        }
+    } else {
+        unit = UnitExponentiation(base: value.unit, exponent: 0.5)
+    }
     let newValue = sqrt(value.scalarValue)
-    return try! Measure(newValue, unit: unit)
+    return try! Measure(newValue, unit: unit!)
 }
 
     
