@@ -146,7 +146,7 @@ open class Latitude: Angle, Ranged {
     }
     
     public convenience override init(symbol: String? = nil, measure: Measure) throws {
-        try self.init(symbol: symbol, measure.scalarValue, error: measure.scalarValue, unit: measure.unit)
+        try self.init(symbol: symbol, measure.scalarValue, error: measure.error, unit: measure.unit)
     }
     
     /// Creates a new latitude with the specified value.
