@@ -114,8 +114,17 @@ public func -(lhs: Measure, rhs: Measure) throws -> Measure {
 ///     - rhs: The right hand side measure for the operator.
 ///  - Returns: The result of the multiplicatipm of the two measures.
 public func *(lhs: Measure, rhs: Measure) -> Measure {
-    let unit = UnitMultiplication(multiplier: lhs.unit, multiplicand: rhs.unit)
-    return try! Measure(lhs.scalarValue * rhs.scalarValue, unit: unit)
+    var unit : OMUnit? = nil
+    if lhs.unit == .one && rhs.unit == .one {
+        unit = .one
+    } else if lhs.unit == .one {
+        unit = rhs.unit
+    } else if rhs.unit == .one {
+        unit = lhs.unit
+    } else {
+        unit = UnitMultiplication(multiplier: lhs.unit, multiplicand: rhs.unit)
+    }
+    return try! Measure(lhs.scalarValue * rhs.scalarValue, unit: unit!)
 }
 
 
@@ -166,8 +175,15 @@ public func *(lhs: Measure, rhs: Double) -> Measure {
 ///     - rhs: The right hand side measure for the operator.
 ///  - Returns: The result of the division of the two measures.
 public func /(lhs: Measure, rhs: Measure) -> Measure {
-    let unit = UnitDivision(numerator: lhs.unit, denominator: rhs.unit)
-    return try! Measure(lhs.scalarValue / rhs.scalarValue, unit: unit)
+    var unit : OMUnit? = nil
+    if lhs.unit == .one && rhs.unit == .one {
+        unit = .one
+    } else if rhs.unit == .one {
+        unit = lhs.unit
+    } else {
+        unit = UnitDivision(numerator: lhs.unit, denominator: rhs.unit)
+    }
+    return try! Measure(lhs.scalarValue / rhs.scalarValue, unit: unit!)
 }
 
 /// Divides the left hand value by the right hand measure and creates a new `Measure` with the
