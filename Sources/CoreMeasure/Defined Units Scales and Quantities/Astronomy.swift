@@ -22,4 +22,24 @@ public extension OMUnit {
     static let lightWeek = UnitMultiple(symbol: "lday", factor: 7, unit: lightDay)
     
     static let astronomicalUnit = UnitMultiple(symbol: "AU", factor: 149597870700.0, unit: metre)
+    
+    static let magnitude = OMUnit(symbol: "mag")
+}
+
+public class Magnitude: Quantity {
+    
+    /// Creates a copy of the ``Measure`` in a specific `Magnitude`.
+    /// - Parameters:
+    ///   - symbol: An optional symbol used for the quantity.
+    ///   - measure: The measure to be copied in the quanity.
+    public override init(symbol: String? = nil, measure: Measure) throws {
+        if measure.unit.dimensions != OMUnit.magnitude.dimensions {
+            throw UnitValidationError.differentDimensionality
+        }
+        try super.init(symbol: symbol, measure: measure)
+    }
+    
+    public init(symbol: String? = nil, _ magnitude: Double, error: Double? = nil) throws {
+        try super.init(symbol: symbol, magnitude, error: error, unit: .magnitude)
+    }
 }
