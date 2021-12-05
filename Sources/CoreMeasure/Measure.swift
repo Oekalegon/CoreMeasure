@@ -330,9 +330,12 @@ open class Measure : CustomStringConvertible,
                 if component.type == .unitExponent {
                     str = "\(str)^"
                 }
+                /*
                 if component.type != .plus {
                     str = "\(str)\(component.displayString)"
                 }
+                 */
+                str = "\(str)\(component.displayString)"
                 if component.type == .basePower {
                     str = "\(str)^"
                 }
@@ -358,7 +361,7 @@ open class Measure : CustomStringConvertible,
             } else if (unit as? CompoundUnit) != nil {
                 let compoundUnit = unit as! CompoundUnit
                 var value = fabs(self.scalarValue)
-                if self.scalarValue > 0 && compoundUnit.displaySign {
+                if self.scalarValue >= 0 && compoundUnit.displaySign {
                     display.append(StringDisplayComponent(type: .plus))
                 } else if self.scalarValue < 0 {
                     display.append(StringDisplayComponent(type: .minus))
